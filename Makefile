@@ -1,6 +1,7 @@
 # Generators and verification tools are pinned here rather than in go.mod so
 # the runtime module graph stays limited to what the binary needs.
 CONTROLLER_GEN := go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.21.0
+KUSTOMIZE      := go run sigs.k8s.io/kustomize/kustomize/v5@v5.8.1
 KIND           := go run sigs.k8s.io/kind@v0.31.0
 
 # Kubernetes 1.31 is the supported cluster floor. The image is pinned by
@@ -8,16 +9,21 @@ KIND           := go run sigs.k8s.io/kind@v0.31.0
 # release family.
 KIND_NODE_IMAGE := kindest/node:v1.31.14@sha256:6f86cf509dbb42767b6e79debc3f2c32e4ee01386f0489b3b2be24b0a55aac2b
 
-.PHONY: generate verify-generate build vet test verify-crd
+.PHONY: generate install-manifest verify-generate build vet test verify-crd verify-install
 
-## generate: regenerate deepcopy code and the CRD manifest.
+## generate: regenerate deepcopy code, the CRD manifest and install.yaml.
 generate:
 	$(CONTROLLER_GEN) object paths=./api/...
 	$(CONTROLLER_GEN) crd paths=./api/... output:crd:dir=config/crd
+	$(MAKE) install-manifest
+
+## install-manifest: render install.yaml from config/default.
+install-manifest:
+	$(KUSTOMIZE) build config/default > install.yaml
 
 ## verify-generate: fail if generated files are out of date.
 verify-generate: generate
-	git diff --exit-code -- api config
+	git diff --exit-code -- api config install.yaml
 
 ## build: compile the controller binary.
 build:
@@ -33,3 +39,8 @@ test:
 ## check that the API server enforces the schema and CEL rules.
 verify-crd:
 	KIND="$(KIND)" KIND_NODE_IMAGE="$(KIND_NODE_IMAGE)" hack/verify-crd.sh
+
+## verify-install: apply install.yaml to a throwaway Kubernetes 1.31 cluster
+## and check that the API server accepts every object.
+verify-install:
+	KIND="$(KIND)" KIND_NODE_IMAGE="$(KIND_NODE_IMAGE)" hack/verify-install.sh

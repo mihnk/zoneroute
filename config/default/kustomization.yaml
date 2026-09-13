@@ -1,0 +1,15 @@
+# `make install-manifest` renders this into install.yaml. No namespace
+# transformer: the kube-system Role must keep its own namespace.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../namespace
+  - ../crd
+  - ../rbac
+  - ../manager
+# Single place to set the controller image. Releases run
+# `kustomize edit set image ghcr.io/mihnk/zoneroute:<version>` here and
+# regenerate install.yaml; users can do the same in their own overlay.
+images:
+  - name: ghcr.io/mihnk/zoneroute
+    newTag: dev

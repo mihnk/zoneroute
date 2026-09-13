@@ -1,0 +1,67 @@
+# The image tag here is the manifest convention, not a published image;
+# release automation (#11) overrides it through config/default. The pod runs
+# as uid 65532 with a read-only root filesystem, which the eventual image
+# must satisfy.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zoneroute-controller
+  namespace: zoneroute-system
+  labels:
+    app.kubernetes.io/name: zoneroute
+    app.kubernetes.io/component: controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zoneroute
+      app.kubernetes.io/component: controller
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: zoneroute
+        app.kubernetes.io/component: controller
+    spec:
+      serviceAccountName: zoneroute-controller
+      terminationGracePeriodSeconds: 10
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: controller
+          image: ghcr.io/mihnk/zoneroute:dev
+          imagePullPolicy: IfNotPresent
+          args:
+            - --cluster-domain=cluster.local
+            - --leader-elect=true
+            - --health-probe-bind-address=:8081
+            - --metrics-bind-address=0
+          ports:
+            - name: probes
+              containerPort: 8081
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: probes
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: probes
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

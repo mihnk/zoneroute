@@ -1,0 +1,26 @@
+# CoreDNS ConfigMap access, namespaced to kube-system.
+#
+# list/watch feed the ConfigMap informer, which the controller uses to read
+# both kube-system/coredns and kube-system/coredns-custom. RBAC cannot
+# narrow list/watch by resourceNames, so the controller can read every
+# ConfigMap in kube-system; that is the honest lower bound.
+#
+# patch is limited to coredns-custom, the only object the controller ever
+# writes (a JSON merge patch of data["zoneroute.server"]). RBAC stops at the
+# object: it cannot restrict which key is patched. No get, create, update or
+# delete.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: zoneroute-coredns
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: zoneroute
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["list", "watch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["coredns-custom"]
+    verbs: ["patch"]
