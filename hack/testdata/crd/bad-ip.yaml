@@ -1,0 +1,9 @@
+apiVersion: dns.mihnk.org/v1alpha1
+kind: ZoneRoute
+metadata:
+  name: bad-ip
+spec:
+  zones:
+    - example.com
+  upstreams:
+    - address: dns.example.com

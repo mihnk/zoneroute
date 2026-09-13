@@ -1,0 +1,11 @@
+apiVersion: dns.mihnk.org/v1alpha1
+kind: ZoneRoute
+metadata:
+  name: dup-upstreams
+spec:
+  zones:
+    - example.com
+  upstreams:
+    - address: 10.0.0.1
+    - address: 10.0.0.1
+      port: 53

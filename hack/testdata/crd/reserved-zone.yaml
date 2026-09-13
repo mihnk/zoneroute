@@ -1,0 +1,9 @@
+apiVersion: dns.mihnk.org/v1alpha1
+kind: ZoneRoute
+metadata:
+  name: reserved-zone
+spec:
+  zones:
+    - 10.in-addr.arpa
+  upstreams:
+    - address: 10.0.0.1

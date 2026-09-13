@@ -1,0 +1,9 @@
+apiVersion: dns.mihnk.org/v1alpha1
+kind: ZoneRoute
+metadata:
+  name: port-default
+spec:
+  zones:
+    - example.com
+  upstreams:
+    - address: 10.0.0.1
