@@ -8,7 +8,7 @@ KIND           := go run sigs.k8s.io/kind@v0.31.0
 # release family.
 KIND_NODE_IMAGE := kindest/node:v1.31.14@sha256:6f86cf509dbb42767b6e79debc3f2c32e4ee01386f0489b3b2be24b0a55aac2b
 
-.PHONY: generate verify-generate vet test verify-crd
+.PHONY: generate verify-generate build vet test verify-crd
 
 ## generate: regenerate deepcopy code and the CRD manifest.
 generate:
@@ -18,6 +18,10 @@ generate:
 ## verify-generate: fail if generated files are out of date.
 verify-generate: generate
 	git diff --exit-code -- api config
+
+## build: compile the controller binary.
+build:
+	go build -o bin/zoneroute-controller ./cmd/zoneroute-controller
 
 vet:
 	go vet ./...
