@@ -1,0 +1,183 @@
+# Test fixtures for the e2e suite: two deterministic upstream DNS servers and
+# a DNS client pod. The upstreams are CoreDNS itself, using the image already
+# preloaded on the kind node (hack/e2e.sh substitutes COREDNS_IMAGE), so no
+# image is pulled. The `hosts` plugin answers the listed names and returns
+# NXDOMAIN for everything else; nothing here reaches the internet.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: zoneroute-e2e
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: upstream-a
+  namespace: zoneroute-e2e
+data:
+  Corefile: |
+    .:53 {
+        hosts {
+            192.0.2.123 hello.zoneroute.test
+        }
+        ready
+        log
+        errors
+    }
+    .:5353 {
+        hosts {
+            192.0.2.55 hello.port.test
+        }
+        log
+        errors
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: upstream-b
+  namespace: zoneroute-e2e
+data:
+  Corefile: |
+    .:53 {
+        hosts {
+            192.0.2.223 hello.child.zoneroute.test
+        }
+        ready
+        log
+        errors
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: upstream-a
+  namespace: zoneroute-e2e
+  labels:
+    app: upstream-a
+    app.kubernetes.io/part-of: zoneroute-e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: upstream-a
+  template:
+    metadata:
+      labels:
+        app: upstream-a
+        app.kubernetes.io/part-of: zoneroute-e2e
+    spec:
+      containers:
+        - name: coredns
+          image: COREDNS_IMAGE
+          imagePullPolicy: IfNotPresent
+          args: ["-conf", "/etc/coredns/Corefile"]
+          ports:
+            - { name: dns, containerPort: 53, protocol: UDP }
+            - { name: dns-tcp, containerPort: 53, protocol: TCP }
+            - { name: alt, containerPort: 5353, protocol: UDP }
+            - { name: alt-tcp, containerPort: 5353, protocol: TCP }
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8181
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              add: ["NET_BIND_SERVICE"]
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/coredns
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: upstream-a
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: upstream-a
+  namespace: zoneroute-e2e
+spec:
+  selector:
+    app: upstream-a
+  ports:
+    - { name: dns, port: 53, targetPort: 53, protocol: UDP }
+    - { name: dns-tcp, port: 53, targetPort: 53, protocol: TCP }
+    - { name: alt, port: 5353, targetPort: 5353, protocol: UDP }
+    - { name: alt-tcp, port: 5353, targetPort: 5353, protocol: TCP }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: upstream-b
+  namespace: zoneroute-e2e
+  labels:
+    app: upstream-b
+    app.kubernetes.io/part-of: zoneroute-e2e
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: upstream-b
+  template:
+    metadata:
+      labels:
+        app: upstream-b
+        app.kubernetes.io/part-of: zoneroute-e2e
+    spec:
+      containers:
+        - name: coredns
+          image: COREDNS_IMAGE
+          imagePullPolicy: IfNotPresent
+          args: ["-conf", "/etc/coredns/Corefile"]
+          ports:
+            - { name: dns, containerPort: 53, protocol: UDP }
+            - { name: dns-tcp, containerPort: 53, protocol: TCP }
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8181
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              add: ["NET_BIND_SERVICE"]
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/coredns
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: upstream-b
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: upstream-b
+  namespace: zoneroute-e2e
+spec:
+  selector:
+    app: upstream-b
+  ports:
+    - { name: dns, port: 53, targetPort: 53, protocol: UDP }
+    - { name: dns-tcp, port: 53, targetPort: 53, protocol: TCP }
+---
+# DNS client. agnhost is the Kubernetes project's own network test image and
+# ships bind-tools (dig); it queries cluster DNS exactly like a workload.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dig
+  namespace: zoneroute-e2e
+  labels:
+    app.kubernetes.io/part-of: zoneroute-e2e
+spec:
+  containers:
+    - name: dig
+      image: registry.k8s.io/e2e-test-images/agnhost:2.66.1@sha256:6e2eef87d0dc77e070a7549bc5fdfa290c0fefe3359eb33c2ad1eda692fe66a4
+      command: ["/agnhost", "pause"]

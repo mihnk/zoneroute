@@ -9,7 +9,11 @@ KIND           := go run sigs.k8s.io/kind@v0.31.0
 # release family.
 KIND_NODE_IMAGE := kindest/node:v1.31.14@sha256:6f86cf509dbb42767b6e79debc3f2c32e4ee01386f0489b3b2be24b0a55aac2b
 
-.PHONY: generate install-manifest verify-generate build vet test verify-crd verify-install
+# Local controller image for the e2e suite; test/e2e/overlay pins the same
+# name, so it is not overridable here.
+E2E_IMAGE := zoneroute-controller:e2e
+
+.PHONY: generate install-manifest verify-generate build build-image vet test verify-crd verify-install test-e2e
 
 ## generate: regenerate deepcopy code, the CRD manifest and install.yaml.
 generate:
@@ -29,9 +33,16 @@ verify-generate: generate
 build:
 	go build -o bin/zoneroute-controller ./cmd/zoneroute-controller
 
+## build-image: build the controller image locally (IMAGE=name:tag).
+IMAGE ?= $(E2E_IMAGE)
+build-image:
+	docker build -t $(IMAGE) .
+
 vet:
 	go vet ./...
 
+## test: unit tests. The e2e suite is behind the e2e build tag and never
+## runs here.
 test:
 	go test -race ./...
 
@@ -44,3 +55,8 @@ verify-crd:
 ## and check that the API server accepts every object.
 verify-install:
 	KIND="$(KIND)" KIND_NODE_IMAGE="$(KIND_NODE_IMAGE)" hack/verify-install.sh
+
+## test-e2e: functional suite on a throwaway kind 1.31 cluster with real
+## CoreDNS. KEEP_E2E_CLUSTER=1 keeps the cluster on exit.
+test-e2e:
+	KIND="$(KIND)" KIND_NODE_IMAGE="$(KIND_NODE_IMAGE)" KUSTOMIZE="$(KUSTOMIZE)" E2E_IMAGE="$(E2E_IMAGE)" hack/e2e.sh

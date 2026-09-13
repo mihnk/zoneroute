@@ -1,0 +1,9 @@
+.git
+.github
+bin
+config
+docs
+hack
+test
+install.yaml
+*.md
