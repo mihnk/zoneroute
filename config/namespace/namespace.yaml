@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: zoneroute-system
+  labels:
+    app.kubernetes.io/name: zoneroute
+    # The Deployment in config/manager satisfies the restricted profile;
+    # config/install_test.go keeps it that way.
+    pod-security.kubernetes.io/enforce: restricted

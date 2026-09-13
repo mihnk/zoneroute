@@ -1,0 +1,22 @@
+# Leader election. The Lease lives in the controller's own namespace (the
+# manager reads it from the ServiceAccount mount) and is named by the
+# leaderElectionID in cmd/zoneroute-controller. client-go's LeaseLock needs
+# get, create and update; create cannot be narrowed by resourceNames.
+#
+# Leader election also tries to record Events; that is best-effort and no
+# Event permission is granted.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: zoneroute-leader-election
+  namespace: zoneroute-system
+  labels:
+    app.kubernetes.io/name: zoneroute
+rules:
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["create"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    resourceNames: ["zoneroute.dns.mihnk.org"]
+    verbs: ["get", "update"]

@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: zoneroute-controller
+  labels:
+    app.kubernetes.io/name: zoneroute
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: zoneroute-controller
+subjects:
+  - kind: ServiceAccount
+    name: zoneroute-controller
+    namespace: zoneroute-system

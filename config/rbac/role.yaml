@@ -1,0 +1,16 @@
+# Cluster-scoped permissions: ZoneRoute only. The controller reads
+# ZoneRoutes through its informer (list/watch) and writes nothing but the
+# status subresource, via Status().Update.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: zoneroute-controller
+  labels:
+    app.kubernetes.io/name: zoneroute
+rules:
+  - apiGroups: ["dns.mihnk.org"]
+    resources: ["zoneroutes"]
+    verbs: ["list", "watch"]
+  - apiGroups: ["dns.mihnk.org"]
+    resources: ["zoneroutes/status"]
+    verbs: ["update"]

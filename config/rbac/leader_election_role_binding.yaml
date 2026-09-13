@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: zoneroute-leader-election
+  namespace: zoneroute-system
+  labels:
+    app.kubernetes.io/name: zoneroute
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: zoneroute-leader-election
+subjects:
+  - kind: ServiceAccount
+    name: zoneroute-controller
+    namespace: zoneroute-system
