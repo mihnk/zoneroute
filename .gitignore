@@ -3,3 +3,4 @@ bin/
 *.out
 /hack/.verify-crd/
 /hack/.verify-install/
+/hack/.e2e/

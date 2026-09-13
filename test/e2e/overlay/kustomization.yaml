@@ -1,0 +1,11 @@
+# The production bundle with the controller image replaced by the locally
+# built one that hack/e2e.sh loads into kind. RBAC and hardening are exactly
+# what install.yaml ships.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../../config/default
+images:
+  - name: ghcr.io/mihnk/zoneroute
+    newName: zoneroute-controller
+    newTag: e2e
