@@ -2,7 +2,10 @@ module github.com/mihnk/zoneroute
 
 go 1.26.0
 
-require k8s.io/apimachinery v0.36.4
+require (
+	github.com/coredns/caddy v1.1.4
+	k8s.io/apimachinery v0.36.4
+)
 
 require (
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
