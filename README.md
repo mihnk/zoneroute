@@ -3,17 +3,42 @@
 Kubernetes-native conditional DNS forwarding for CoreDNS.
 
 A `ZoneRoute` declares which DNS zones are forwarded to which upstream
-resolvers. The controller publishes a CoreDNS configuration fragment for them
-without touching the cluster's Corefile.
+resolvers. The controller renders a CoreDNS configuration fragment for all
+accepted routes and publishes it into one key of one ConfigMap,
+`kube-system/coredns-custom` → `zoneroute.server`. It never edits the
+cluster's Corefile or the CoreDNS Deployment; CoreDNS picks the fragment up
+through a one-time `import custom/*.server` wiring that the administrator
+establishes once.
 
-**Status:** pre-release. Phase 1 — the public API and project foundation — is
-complete; the controller is not implemented yet.
+**Status:** pre-release, on the way to v0.1. The controller, RBAC and
+install manifests are complete and exercised end to end on kind (Kubernetes
+1.31, stock kubeadm CoreDNS). **No container image is published yet**: the
+committed manifest references `ghcr.io/mihnk/zoneroute:dev`, which does not
+exist until the first release. Until then, build the image yourself and
+point the manifest at it — see [Image](docs/install.md#image).
 
-## API
+## Quick start
 
-`dns.mihnk.org/v1alpha1`, cluster-scoped.
+Read the image note above first; step 1 will not pull an image on its own
+yet. Full details, privileges and the kustomize path: [docs/install.md](docs/install.md).
 
-```yaml
+```sh
+# 1. CRD, namespace, RBAC and controller Deployment
+kubectl apply -f install.yaml
+
+# 2. The integration ConfigMap. Never delete or replace an existing one.
+kubectl -n kube-system get configmap coredns-custom \
+  || kubectl -n kube-system create configmap coredns-custom
+
+# 3. Wire CoreDNS once: top-level `import custom/*.server` and a read-only
+#    mount of coredns-custom at /etc/coredns/custom. See docs/coredns-wiring.md;
+#    on a kubeadm/kind cluster you administer yourself: hack/wire-coredns.sh
+
+# 4. Wait for the controller
+kubectl -n zoneroute-system rollout status deployment/zoneroute-controller
+
+# 5. First route
+kubectl apply -f - <<'EOF'
 apiVersion: dns.mihnk.org/v1alpha1
 kind: ZoneRoute
 metadata:
@@ -21,48 +46,60 @@ metadata:
 spec:
   zones:
     - company.local
-    - corp.internal
-  upstreams:              # order is significant: first is tried first
+  upstreams:
     - address: 10.10.10.53
     - address: 10.10.10.54
-      port: 5353          # optional, defaults to 53
+      port: 5353
+EOF
+
+# 6. Both conditions should be True
+kubectl get zoneroutes
+
+# 7. The published fragment
+kubectl -n kube-system get configmap coredns-custom -o jsonpath='{.data.zoneroute\.server}'
+
+# 8. Resolve from inside the cluster
+kubectl run -it --rm dnsq --image=registry.k8s.io/e2e-test-images/agnhost:2.66.1 \
+  --restart=Never -- dig +short host.company.local
 ```
 
-Validation is enforced by the API server (schema and CEL):
+## Documentation
 
-- 1–64 zones; compared case-insensitively with the trailing dot ignored, so
-  `Example.COM` and `example.com.` are the same zone and may not both appear
-- `localhost`, `in-addr.arpa`, `ip6.arpa` and their subzones are reserved
-- 1–8 upstreams; `address` must be a canonical IPv4 or IPv6 address; the
-  same `(address, port)` may not appear twice
-
-Status carries two conditions, `Accepted` and `Published`, plus
-`observedGeneration`. `Published` means the controller wrote the fragment to
-the integration point under the installation contract — not that CoreDNS
-loaded it.
+- [Installation](docs/install.md) — prerequisites, install paths, first
+  ZoneRoute, verification, ownership, uninstall.
+- [CoreDNS wiring](docs/coredns-wiring.md) — the integration contract,
+  kubeadm/kind steps, managed-provider notes.
 
 ## Compatibility
 
-| Component  | Minimum |
-| ---------- | ------- |
-| Kubernetes | 1.31 (CEL IP library) |
-| Go         | 1.26    |
+| Component | Minimum | Why |
+| --- | --- | --- |
+| Kubernetes | 1.31 | the CRD validates upstream addresses with the CEL IP library |
+| CoreDNS | 1.7.0 | the `reload` plugin detects changes in imported files from 1.7.0 |
+| Go | 1.26 | development only |
+
+The integration is validated on kind/kubeadm-style CoreDNS by the e2e suite.
+Other environments are described conservatively in
+[docs/coredns-wiring.md](docs/coredns-wiring.md#managed-providers).
 
 ## Development
 
 ```sh
-make generate         # deepcopy + CRD (controller-gen, pinned in the Makefile)
+make generate         # deepcopy, CRD and install.yaml (controller-gen and kustomize, pinned in the Makefile)
 make verify-generate  # fail if generated files are stale
 make vet
-make test
-make verify-crd       # install the CRD on a kind Kubernetes 1.31 cluster and
-                      # exercise the validation rules; needs docker
+make test             # unit and static manifest tests
+make build-image      # local controller image (IMAGE=name:tag to override)
+make verify-crd       # CRD schema and CEL rules on a kind Kubernetes 1.31 cluster; needs docker
+make verify-install   # install.yaml applies cleanly on a kind Kubernetes 1.31 cluster; needs docker
+make test-e2e         # functional suite against real CoreDNS on kind; needs docker, ~15 minutes
 ```
 
 Generated files carry a `Code generated … DO NOT EDIT.` header:
 `api/v1alpha1/zz_generated.deepcopy.go` and
-`config/crd/dns.mihnk.org_zoneroutes.yaml`. Edit `api/v1alpha1/types.go`
-and run `make generate` instead.
+`config/crd/dns.mihnk.org_zoneroutes.yaml`; `install.yaml` is rendered from
+`config/default`. Edit `api/v1alpha1/types.go` or `config/` and run
+`make generate` instead.
 
 ## License
 
