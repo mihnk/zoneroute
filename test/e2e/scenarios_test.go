@@ -70,7 +70,7 @@ func sub(s string) string {
 // and the test zone resolves through the default path, not to our upstream.
 func TestInitialState(t *testing.T) {
 	waitFragment(t, expectFragment(t))
-	if got := dig(t, helloName, false); got == answerA {
+	if got := dig(t, helloName, false, ""); got == answerA {
 		t.Fatalf("%s already resolves to %s before any ZoneRoute", helloName, answerA)
 	}
 }
@@ -88,13 +88,11 @@ func TestHappyPath(t *testing.T) {
 	waitFragment(t, want)
 
 	waitDNS(t, helloName, answerA)
-	if got := dig(t, helloName, true); got != answerA {
-		t.Errorf("over TCP: got %q, want %s", got, answerA)
-	}
-	if got := dig(t, "nothing."+zone+".", false); got != "" {
+	waitDNSOver(t, helloName, answerA, true)
+	if got := dig(t, "nothing."+zone+".", false, ""); got != "" {
 		t.Errorf("name unknown to the upstream answered %q", got)
 	}
-	if got := dig(t, "kubernetes.default.svc.cluster.local.", false); got != kubernetesIP {
+	if got := dig(t, "kubernetes.default.svc.cluster.local.", false, ""); got != kubernetesIP {
 		t.Errorf("cluster DNS: got %q, want %s", got, kubernetesIP)
 	}
 }
@@ -303,7 +301,7 @@ func TestReservedZone(t *testing.T) {
 	waitCondition(t, "reserved", v1alpha1.ConditionAccepted, metav1.ConditionFalse, v1alpha1.ReasonReservedZone)
 	waitCondition(t, "reserved", v1alpha1.ConditionPublished, metav1.ConditionFalse, v1alpha1.ReasonNotAccepted)
 	waitFragment(t, expectFragment(t))
-	if got := dig(t, "kubernetes.default.svc.cluster.local.", false); got != kubernetesIP {
+	if got := dig(t, "kubernetes.default.svc.cluster.local.", false, ""); got != kubernetesIP {
 		t.Errorf("cluster DNS: got %q, want %s", got, kubernetesIP)
 	}
 }

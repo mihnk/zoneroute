@@ -333,13 +333,17 @@ func withoutImport(text string) string {
 
 // --- DNS ----------------------------------------------------------------
 
-// dig resolves name through cluster DNS from the fixture pod, exactly like a
-// workload would. It returns the answer, or "" for NXDOMAIN and errors.
-func dig(t *testing.T, name string, tcp bool) string {
+// dig resolves name from the fixture pod. With an empty server it goes
+// through cluster DNS exactly like a workload would; otherwise it asks that
+// server directly. It returns the answer, or "" for NXDOMAIN and errors.
+func dig(t *testing.T, name string, tcp bool, server string) string {
 	t.Helper()
 	args := []string{"-n", fixtureNamespace, "exec", "dig", "--", "dig", "+short", "+time=2", "+tries=1"}
 	if tcp {
 		args = append(args, "+tcp")
+	}
+	if server != "" {
+		args = append(args, "@"+server)
 	}
 	args = append(args, name)
 	out, err := exec.Command("kubectl", args...).Output()
@@ -349,19 +353,69 @@ func dig(t *testing.T, name string, tcp bool) string {
 	return strings.TrimSpace(string(out))
 }
 
+// coreDNSPodIPs lists the CoreDNS replicas. Each one reloads on its own
+// schedule, so a DNS assertion holds only when every replica agrees.
+func coreDNSPodIPs(t *testing.T) []string {
+	t.Helper()
+	var pods corev1.PodList
+	if err := kube.List(ctx, &pods, client.InNamespace(coreDNSNamespace), client.MatchingLabels{"k8s-app": "kube-dns"}); err != nil {
+		t.Fatalf("listing CoreDNS pods: %v", err)
+	}
+	var ips []string
+	for _, p := range pods.Items {
+		if p.Status.PodIP != "" && p.DeletionTimestamp == nil {
+			ips = append(ips, p.Status.PodIP)
+		}
+	}
+	if len(ips) == 0 {
+		t.Fatal("no CoreDNS pods")
+	}
+	return ips
+}
+
+// resolveEverywhere queries the Service path and every CoreDNS replica and
+// returns the answers, keyed by where they came from.
+func resolveEverywhere(t *testing.T, name string, tcp bool) map[string]string {
+	t.Helper()
+	answers := map[string]string{"service": dig(t, name, tcp, "")}
+	for _, ip := range coreDNSPodIPs(t) {
+		answers[ip] = dig(t, name, tcp, ip)
+	}
+	return answers
+}
+
+func waitDNSOver(t *testing.T, name, want string, tcp bool) {
+	t.Helper()
+	proto := "udp"
+	if tcp {
+		proto = "tcp"
+	}
+	eventually(t, dnsTimeout, fmt.Sprintf("%s resolves to %s over %s on every replica", name, want, proto), func() (bool, string) {
+		answers := resolveEverywhere(t, name, tcp)
+		for _, got := range answers {
+			if got != want {
+				return false, fmt.Sprint(answers)
+			}
+		}
+		return true, fmt.Sprint(answers)
+	})
+}
+
 func waitDNS(t *testing.T, name, want string) {
 	t.Helper()
-	eventually(t, dnsTimeout, fmt.Sprintf("%s resolves to %s", name, want), func() (bool, string) {
-		got := dig(t, name, false)
-		return got == want, fmt.Sprintf("%q", got)
-	})
+	waitDNSOver(t, name, want, false)
 }
 
 func waitDNSNot(t *testing.T, name, not string) {
 	t.Helper()
-	eventually(t, dnsTimeout, fmt.Sprintf("%s no longer resolves to %s", name, not), func() (bool, string) {
-		got := dig(t, name, false)
-		return got != not, fmt.Sprintf("%q", got)
+	eventually(t, dnsTimeout, fmt.Sprintf("%s no longer resolves to %s on any replica", name, not), func() (bool, string) {
+		answers := resolveEverywhere(t, name, false)
+		for _, got := range answers {
+			if got == not {
+				return false, fmt.Sprint(answers)
+			}
+		}
+		return true, fmt.Sprint(answers)
 	})
 }
 
