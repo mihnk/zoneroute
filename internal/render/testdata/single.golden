@@ -1,0 +1,8 @@
+# Managed by ZoneRoute. Edits are overwritten.
+
+# zoneroute: single (generation 0)
+example.com {
+    forward . 10.0.0.1 {
+        policy sequential
+    }
+}
