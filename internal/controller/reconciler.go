@@ -42,7 +42,6 @@ const (
 
 // globalRequest is the single reconcile key. Every event source maps to it,
 // so the workqueue collapses any burst of events into one full recompute.
-// Issue #6 maps the ConfigMap watches to this same value.
 var globalRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: "zoneroute"}}
 
 // Reconciler recomputes the complete desired state on every run. It never
@@ -68,14 +67,18 @@ func ClusterDomain(raw string) (string, error) {
 	return c, nil
 }
 
-// SetupWithManager registers the ZoneRoute watch. For() is deliberately not
-// used: it would make the object name the reconcile key.
+// SetupWithManager registers the watches. Every source maps to the same
+// global request. For() is deliberately not used: it would make the object
+// name the reconcile key.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("zoneroute").
 		Watches(&v1alpha1.ZoneRoute{},
 			handler.EnqueueRequestsFromMapFunc(mapToGlobal),
 			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Watches(&corev1.ConfigMap{},
+			handler.EnqueueRequestsFromMapFunc(mapToGlobal),
+			builder.WithPredicates(coreDNSConfigMapPredicate())).
 		Complete(r)
 }
 
