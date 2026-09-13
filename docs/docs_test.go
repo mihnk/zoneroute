@@ -22,7 +22,7 @@ import (
 	"github.com/mihnk/zoneroute/internal/corefile"
 )
 
-var docFiles = []string{"../README.md", "install.md", "coredns-wiring.md", "troubleshooting.md"}
+var docFiles = []string{"../README.md", "install.md", "coredns-wiring.md", "troubleshooting.md", "release.md"}
 
 func read(t *testing.T, path string) string {
 	t.Helper()
@@ -127,6 +127,7 @@ func TestConditionNamesAreReal(t *testing.T) {
 		"ServiceAccount": true, "Namespace": true, "Lease": true, "CustomResourceDefinition": true,
 		"KUBECONFIG": true, "IMAGE": true, "LICENSE": true,
 		"NetworkPolicy": true, "SERVFAIL": true, "NXDOMAIN": true, "Prometheus": true,
+		"SemVer": true, "Actions": true, "Buildx": true, "Registry": true,
 		"Caddyfile": true, "Events": true, "Secrets": true,
 	}
 	for _, f := range docFiles {
@@ -172,14 +173,20 @@ func TestIntegrationContractStrings(t *testing.T) {
 		}
 	}
 
-	for _, f := range docFiles {
+	// The documents that teach the integration contract must state it; a
+	// maintainer document such as release.md has no reason to.
+	contractDocs := []string{"../README.md", "install.md", "coredns-wiring.md", "troubleshooting.md"}
+	for _, f := range contractDocs {
 		text := read(t, f)
 		for _, s := range []string{importLine, mountPath, corefile.ManagedKey, "coredns-custom"} {
 			if !strings.Contains(text, s) {
 				t.Errorf("%s does not mention %q", f, s)
 			}
 		}
-		if strings.Contains(text, "subPath:") {
+	}
+	// No document may ever show a subPath mount.
+	for _, f := range docFiles {
+		if strings.Contains(read(t, f), "subPath:") {
 			t.Errorf("%s shows a subPath mount", f)
 		}
 	}

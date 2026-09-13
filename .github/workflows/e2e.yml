@@ -7,9 +7,12 @@ on:
 
 permissions: {}
 
+# A newer commit on the same pull request cancels its stale run; every
+# commit on main keeps its own run, so a later merge never erases an earlier
+# commit's e2e result.
 concurrency:
-  group: e2e-${{ github.ref }}
-  cancel-in-progress: true
+  group: e2e-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   e2e:

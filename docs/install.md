@@ -67,33 +67,43 @@ Not granted: get, create, update or delete on any ConfigMap; anything on
 
 ## Install
 
-### Image
+### From a release (recommended)
 
-There is no published image yet. The manifest references
-`ghcr.io/mihnk/zoneroute:dev`, the development naming convention, which
-will not be pullable until the first release publishes it. Until then:
+Each release publishes an installation manifest whose controller image is
+pinned by digest, so the manifest names the exact image bytes rather than a
+tag someone could move:
 
 ```sh
-# build from a checkout, tag for your registry, push it
+# the current release
+kubectl apply -f https://github.com/mihnk/zoneroute/releases/latest/download/install.yaml
+
+# or an exact version
+kubectl apply -f https://github.com/mihnk/zoneroute/releases/download/v0.1.0/install.yaml
+```
+
+This installs everything in [What gets installed](#what-gets-installed). It
+does **not** create `coredns-custom` and does not touch CoreDNS; those are
+the next two steps.
+
+The images are published to `ghcr.io/mihnk/zoneroute` for `linux/amd64` and
+`linux/arm64`. Each release names its digest, and carries an SBOM and build
+provenance; `gh attestation verify oci://ghcr.io/mihnk/zoneroute@sha256:… --repo mihnk/zoneroute`
+checks that the image came from this repository's release workflow.
+
+### From a checkout
+
+The `install.yaml` committed to the repository is the **development**
+manifest: it references `ghcr.io/mihnk/zoneroute:dev`, which is a naming
+convention and not a published image. Use it when you build the controller
+yourself:
+
+```sh
 make build-image IMAGE=registry.example.com/zoneroute:dev
-docker push registry.example.com/zoneroute:dev
+docker push registry.example.com/zoneroute:dev   # or: kind load docker-image …
 ```
 
-and point the manifest at it with the kustomize overlay below (`images:`).
-On a kind cluster, `kind load docker-image registry.example.com/zoneroute:dev`
-replaces the push.
-
-### From the committed manifest
-
-From a checkout of the repository:
-
-```sh
-kubectl apply -f install.yaml
-```
-
-This is the simplest path and installs everything in
-[What gets installed](#what-gets-installed). It does **not** create
-`coredns-custom` and does not touch CoreDNS; those are the next two steps.
+and point the manifest at your image with the kustomize overlay below
+(`images:`).
 
 ### With kustomize
 

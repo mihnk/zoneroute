@@ -5,9 +5,11 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"os"
+	"os/exec"
 	"reflect"
 	"slices"
 	"testing"
@@ -402,3 +404,33 @@ func TestDeployment(t *testing.T) {
 }
 
 func ptr[T any](v T) *T { return &v }
+
+// The release asset is the development bundle with one difference: the image
+// is pinned by digest. Everything else — every object, every permission,
+// every security setting — must be byte-identical, so the manifest users
+// install is the one the e2e suite validated.
+func TestReleaseManifestOnlyRepinsTheImage(t *testing.T) {
+	const digest = "sha256:" +
+		"1111111111111111111111111111111111111111111111111111111111111111"
+
+	cmd := exec.Command("../hack/release-manifest.sh")
+	cmd.Env = append(os.Environ(),
+		"DIGEST="+digest,
+		"KUSTOMIZE=go run sigs.k8s.io/kustomize/kustomize/v5@v5.8.1",
+	)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("release-manifest.sh: %v\n%s", err, stderr.String())
+	}
+
+	dev, err := os.ReadFile(bundlePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := bytes.ReplaceAll(dev, []byte(image), []byte("ghcr.io/mihnk/zoneroute@"+digest))
+	if !bytes.Equal(bytes.TrimSpace(out), bytes.TrimSpace(want)) {
+		t.Errorf("the release manifest differs from install.yaml by more than the image reference")
+	}
+}

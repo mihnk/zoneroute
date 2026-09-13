@@ -4,3 +4,5 @@ bin/
 /hack/.verify-crd/
 /hack/.verify-install/
 /hack/.e2e/
+/hack/.release/
+/dist/

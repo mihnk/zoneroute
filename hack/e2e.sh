@@ -72,7 +72,9 @@ echo "==> loading image into the cluster"
 $KIND load docker-image "$E2E_IMAGE" --name "$cluster" >/dev/null
 
 echo "==> wiring CoreDNS"
-hack/wire-coredns.sh | sed 's/^/  /'
+# The suite waits for real DNS convergence dozens of times; one replica and a
+# short reload interval cut that without weakening any assertion.
+ZONEROUTE_TEST_TUNING=1 hack/wire-coredns.sh | sed 's/^/  /'
 
 echo "==> installing ZoneRoute from the production manifests"
 $KUSTOMIZE build test/e2e/overlay | kubectl apply -f - >/dev/null

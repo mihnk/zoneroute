@@ -13,7 +13,7 @@ KIND_NODE_IMAGE := kindest/node:v1.31.14@sha256:6f86cf509dbb42767b6e79debc3f2c32
 # name, so it is not overridable here.
 E2E_IMAGE := zoneroute-controller:e2e
 
-.PHONY: generate install-manifest verify-generate build build-image vet test verify-crd verify-install test-e2e
+.PHONY: generate install-manifest verify-generate build build-image vet test verify-crd verify-install test-e2e release-check release-manifest
 
 ## generate: regenerate deepcopy code, the CRD manifest and install.yaml.
 generate:
@@ -25,9 +25,11 @@ generate:
 install-manifest:
 	$(KUSTOMIZE) build config/default > install.yaml
 
-## verify-generate: fail if generated files are out of date.
+## verify-generate: fail if generated files are out of date. Only generated
+## paths are compared: config/ also holds hand-written manifests and tests,
+## which config/install_test.go covers instead.
 verify-generate: generate
-	git diff --exit-code -- api config install.yaml
+	git diff --exit-code -- api config/crd install.yaml
 
 ## build: compile the controller binary.
 build:
@@ -60,3 +62,13 @@ verify-install:
 ## CoreDNS. KEEP_E2E_CLUSTER=1 keeps the cluster on exit.
 test-e2e:
 	KIND="$(KIND)" KIND_NODE_IMAGE="$(KIND_NODE_IMAGE)" KUSTOMIZE="$(KUSTOMIZE)" E2E_IMAGE="$(E2E_IMAGE)" hack/e2e.sh
+
+## release-check: validate VERSION and render the release artifacts locally.
+## Publishes nothing. Example: VERSION=v0.1.0 make release-check
+release-check:
+	KUSTOMIZE="$(KUSTOMIZE)" hack/release-check.sh
+
+## release-manifest: print the release install manifest. Pass DIGEST for a
+## real release, or VERSION for a dry run.
+release-manifest:
+	KUSTOMIZE="$(KUSTOMIZE)" hack/release-manifest.sh

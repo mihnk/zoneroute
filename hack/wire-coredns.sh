@@ -47,6 +47,23 @@ else
   echo "  added"
 fi
 
+# Test clusters may ask for faster convergence. Neither setting changes the
+# integration contract: one replica removes the wait for replicas to reload
+# independently, and a shorter reload interval only changes how often CoreDNS
+# looks. Never use these on a real cluster.
+if [ "${ZONEROUTE_TEST_TUNING:-}" = "1" ]; then
+  echo "==> test tuning"
+  corefile=$(k get configmap coredns -o jsonpath='{.data.Corefile}')
+  if grep -qE '^[[:space:]]*reload[[:space:]]*$' <<<"$corefile"; then
+    tuned=$(sed -E 's/^([[:space:]]*)reload[[:space:]]*$/\1reload 2s 1s/' <<<"$corefile")
+    k patch configmap coredns --type merge \
+      -p "$(jq -n --arg c "$tuned" '{data: {Corefile: $c}}')" >/dev/null
+    echo "  reload interval shortened"
+  fi
+  k scale deployment/coredns --replicas=1 >/dev/null
+  echo "  scaled to one replica"
+fi
+
 echo "==> waiting for CoreDNS"
 k rollout status deployment/coredns --timeout=120s >/dev/null
 echo "  ready"
