@@ -94,8 +94,12 @@ make test             # unit and static manifest tests
 make build-image      # local controller image (IMAGE=name:tag to override)
 make verify-crd       # CRD schema and CEL rules on a kind Kubernetes 1.31 cluster; needs docker
 make verify-install   # install.yaml applies cleanly on a kind Kubernetes 1.31 cluster; needs docker
-make test-e2e         # functional suite against real CoreDNS on kind; needs docker, ~15 minutes
+make test-e2e         # functional suite against real CoreDNS on kind; needs docker
+
+VERSION=v0.1.0 make release-check   # render the release artifacts locally; publishes nothing
 ```
+
+Cutting a release: [docs/release.md](docs/release.md).
 
 Generated files carry a `Code generated … DO NOT EDIT.` header:
 `api/v1alpha1/zz_generated.deepcopy.go` and
