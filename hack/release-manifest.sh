@@ -10,7 +10,8 @@
 # never rewritten by a release.
 set -euo pipefail
 
-: "${KUSTOMIZE:?set KUSTOMIZE (see Makefile)}"
+# Same pinned kustomize as the Makefile; override to use another build.
+KUSTOMIZE="${KUSTOMIZE:-go run sigs.k8s.io/kustomize/kustomize/v5@v5.8.1}"
 
 repo=ghcr.io/mihnk/zoneroute
 version="${VERSION:-}"

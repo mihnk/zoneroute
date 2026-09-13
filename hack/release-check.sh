@@ -9,6 +9,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# Same pinned kustomize as the Makefile; override to use another build.
+KUSTOMIZE="${KUSTOMIZE:-go run sigs.k8s.io/kustomize/kustomize/v5@v5.8.1}"
+
 # semver VERSION -> 0 when VERSION is a tag this project releases:
 # "v" plus SemVer, with an optional prerelease. Build metadata (+...) is
 # rejected: it cannot appear in a container tag.

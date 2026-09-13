@@ -69,6 +69,7 @@ release-check:
 	KUSTOMIZE="$(KUSTOMIZE)" hack/release-check.sh
 
 ## release-manifest: print the release install manifest. Pass DIGEST for a
-## real release, or VERSION for a dry run.
+## real release, or VERSION for a dry run. Silent: the output is a manifest,
+## so `make release-manifest > install.yaml` must not carry a recipe line.
 release-manifest:
-	KUSTOMIZE="$(KUSTOMIZE)" hack/release-manifest.sh
+	@KUSTOMIZE="$(KUSTOMIZE)" hack/release-manifest.sh

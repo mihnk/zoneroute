@@ -54,7 +54,7 @@ jobs:
           else
             version="${INPUT_VERSION}"
           fi
-          VERSION="$version" hack/release-check.sh
+          VERSION="$version" make release-check
           echo "version=$version" >> "$GITHUB_OUTPUT"
           case "$version" in
             *-*) echo "prerelease=true"  >> "$GITHUB_OUTPUT" ;;
@@ -222,8 +222,7 @@ jobs:
           DIGEST: ${{ needs.build.outputs.digest }}
         run: |
           mkdir -p dist
-          KUSTOMIZE="go run sigs.k8s.io/kustomize/kustomize/v5@v5.8.1" \
-            hack/release-manifest.sh > dist/install.yaml
+          hack/release-manifest.sh > dist/install.yaml
           grep -q "image: $IMAGE@$DIGEST" dist/install.yaml
           hack/release-notes.sh > dist/notes.md
           (cd dist && sha256sum install.yaml > checksums.txt)
