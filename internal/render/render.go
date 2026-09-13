@@ -19,9 +19,10 @@ import (
 	"github.com/mihnk/zoneroute/internal/dnsname"
 )
 
-// DefaultPort is the upstream port written implicitly. It mirrors the API
-// schema default so the two never drift; the value is omitted from output.
-const DefaultPort int32 = 53
+// defaultPort is the upstream port that is omitted from output. It equals
+// the API schema default by protocol convention, not by dependency: the two
+// layers make the same DNS assumption independently.
+const defaultPort int32 = 53
 
 const header = "# Managed by ZoneRoute. Edits are overwritten.\n"
 
@@ -37,8 +38,8 @@ type Route struct {
 // IPv6 literal; the renderer writes it as given.
 type Upstream struct {
 	Address string
-	// Port 0 is treated as DefaultPort. This exists only for Go values built
-	// by hand: objects that went through the API server always carry an
+	// Port 0 is treated as 53. This exists only for Go values built by
+	// hand: objects that went through the API server always carry an
 	// explicit port because the schema defaults it.
 	Port int32
 }
@@ -77,14 +78,12 @@ func Render(routes []Route) ([]byte, error) {
 	return out, nil
 }
 
-// validate runs the fragment through CoreDNS's Caddyfile parser.
-//
-// With no directive list the parser is permissive: braces are legal key
-// tokens and surplus or missing closing braces are tolerated once any
-// closing brace has been seen. What it does reject is a block that is
-// opened and never closed. That is exactly the class of bug a renderer can
-// have, so the check stays; content validity (zone names, addresses) is the
-// CRD schema's job and is not re-checked here.
+// validate checks that the generated fragment is parseable by CoreDNS's
+// Caddyfile parser. It is not a semantic validator of user input: zone
+// names and addresses are validated by the CRD schema before they reach
+// the renderer, and the parser itself accepts almost any key text. What it
+// catches is a structural rendering bug, such as a block that is opened and
+// never closed.
 func validate(fragment []byte) error {
 	if _, err := caddyfile.Parse("zoneroute.server", bytes.NewReader(fragment), nil); err != nil {
 		return fmt.Errorf("rendered fragment does not parse: %w", err)
@@ -112,9 +111,9 @@ func zoneKeys(zones []string) []string {
 func upstreamAddr(u Upstream) string {
 	port := u.Port
 	if port == 0 {
-		port = DefaultPort
+		port = defaultPort
 	}
-	if port == DefaultPort {
+	if port == defaultPort {
 		return u.Address
 	}
 	return net.JoinHostPort(u.Address, strconv.Itoa(int(port)))
