@@ -1,0 +1,15 @@
+# Managed by ZoneRoute. Edits are overwritten.
+
+# zoneroute: aws (generation 1)
+aws.internal {
+    forward . 10.20.0.2 {
+        policy sequential
+    }
+}
+
+# zoneroute: corporate (generation 3)
+company.local corp.internal {
+    forward . 10.10.10.53 10.10.10.54:5353 {
+        policy sequential
+    }
+}
