@@ -69,6 +69,8 @@ kubectl run -it --rm dnsq --image=registry.k8s.io/e2e-test-images/agnhost:2.66.1
   ZoneRoute, verification, ownership, uninstall.
 - [CoreDNS wiring](docs/coredns-wiring.md) — the integration contract,
   kubeadm/kind steps, managed-provider notes.
+- [Troubleshooting](docs/troubleshooting.md) — what each `Accepted` /
+  `Published` reason means, and what to inspect when a name does not resolve.
 
 ## Compatibility
 

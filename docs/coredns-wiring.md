@@ -181,7 +181,8 @@ kubectl -n kube-system logs -l k8s-app=kube-dns | grep -i reload
 Then create a route and resolve a name in it from inside the cluster, as in
 [install.md](install.md#resolve-from-inside-the-cluster). A route with
 `Published=True` whose zone does not resolve after a couple of minutes
-points at the mount or the reload, not at the controller.
+points at the mount or the reload, not at the controller:
+[Fragment exists but CoreDNS does not use it](troubleshooting.md#fragment-exists-but-coredns-does-not-use-it).
 
 ## Unwiring
 

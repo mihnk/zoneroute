@@ -309,8 +309,8 @@ The two conditions, at installation level:
 - the `coredns-custom` mount in the CoreDNS Pod is healthy.
 
 Those are verified below, by asking DNS. Every `Accepted` / `Published`
-reason is a constant in `api/v1alpha1/types.go`; each condition's `message`
-says what to do.
+reason, what causes it and what to inspect, is in the
+[reason reference](troubleshooting.md#reason-reference).
 
 ### The published fragment
 
