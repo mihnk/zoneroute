@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import ThemeToggle from '../components/ThemeToggle.astro';
 
 interface Props {
   title: string;
@@ -20,11 +21,17 @@ const current = Astro.url.pathname;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- Applies a stored theme before first paint; with no stored choice the
-         CSS `prefers-color-scheme` rules decide, so the system theme wins. -->
+    <!-- Runs before first paint. A choice stored on this site wins; otherwise
+         the shared *.mihnk.org cookie carries a choice made on another mihnk
+         site. With neither, nothing is set and `prefers-color-scheme` decides,
+         so the system theme still wins. -->
     <script is:inline>
       try {
         var t = localStorage.getItem('theme');
+        if (t !== 'dark' && t !== 'light') {
+          var m = document.cookie.match(/(?:^|;\s*)mihnk-theme=(dark|light)/);
+          t = m && m[1];
+        }
         if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t;
       } catch (e) {}
     </script>
@@ -32,6 +39,14 @@ const current = Astro.url.pathname;
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <link rel="sitemap" href="/sitemap-index.xml" />
+
+    <link
+      rel="preload"
+      href="/fonts/league-spartan-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="ZoneRoute" />
@@ -53,10 +68,20 @@ const current = Astro.url.pathname;
       </a>
 
       <header class="masthead">
-        <div class="wrap masthead-inner">
-          <a class="wordmark" href="/">
-            <span class="zone">Zone</span>Route
+        {/* The organisation first, then the project it belongs to. */}
+        <div class="brand">
+          <a class="brandmark" href="https://mihnk.org" rel="noopener noreferrer" lang="en">
+            mih<span class="accent">n</span>k
           </a>
+          <span class="brand-sep" aria-hidden="true">
+            /
+          </span>
+          <a class="wordmark" href="/">
+            ZoneRoute
+          </a>
+        </div>
+
+        <div class="masthead-controls">
           <nav class="nav" aria-label="Main">
             <a href="/docs/" aria-current={current.startsWith('/docs') ? 'page' : undefined}>
               Docs
@@ -65,6 +90,7 @@ const current = Astro.url.pathname;
               GitHub
             </a>
           </nav>
+          <ThemeToggle />
         </div>
       </header>
 
@@ -73,35 +99,40 @@ const current = Astro.url.pathname;
       </main>
 
       <footer class="footer">
-        <div class="wrap footer-inner">
-          <ul>
-            <li>
-              <a href={repo} rel="noopener noreferrer">
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href={`${repo}/releases`} rel="noopener noreferrer">
-                Releases
-              </a>
-            </li>
-            <li>
-              <a href={`${repo}/blob/main/LICENSE`} rel="noopener noreferrer">
-                Apache-2.0
-              </a>
-            </li>
-            <li>
-              <a href="mailto:security@mihnk.org">Security</a>
-            </li>
-          </ul>
-          <p>
+        <p class="footer-top">
+          <span class="footer-project">ZoneRoute</span>
+          <span>
             A{' '}
             <a href="https://mihnk.org" rel="noopener noreferrer">
               mihnk
             </a>{' '}
             project.
-          </p>
-        </div>
+          </span>
+        </p>
+
+        <ul class="footer-links">
+          <li>
+            <a href={repo} rel="noopener noreferrer">
+              GitHub
+            </a>
+          </li>
+          <li>
+            <a href="/docs/">Docs</a>
+          </li>
+          <li>
+            <a href={`${repo}/releases`} rel="noopener noreferrer">
+              Releases
+            </a>
+          </li>
+          <li>
+            <a href={`${repo}/blob/main/LICENSE`} rel="noopener noreferrer">
+              License
+            </a>
+          </li>
+          <li>
+            <a href="mailto:security@mihnk.org">Security</a>
+          </li>
+        </ul>
       </footer>
     </div>
   </body>

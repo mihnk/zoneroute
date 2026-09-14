@@ -1,0 +1,56 @@
+{/* The same control, markup and script as mihnk.org, so the two sites behave
+    identically: three states — system by default, light or dark once chosen
+    — with the choice stored per site and applied before first paint. */}
+<button
+  type="button"
+  class="theme-toggle"
+  id="theme-toggle"
+  data-label-light="Light"
+  data-label-dark="Dark"
+  hidden
+>
+  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+    <circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.25"></circle>
+    <path d="M8 1.75a6.25 6.25 0 0 1 0 12.5z" fill="currentColor"></path>
+  </svg>
+</button>
+
+<script is:inline>
+  (() => {
+    const btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+
+    const prefersDark = matchMedia('(prefers-color-scheme: dark)');
+    const isDark = () => {
+      const explicit = document.documentElement.dataset.theme;
+      return explicit === 'dark' || (!explicit && prefersDark.matches);
+    };
+
+    const sync = () => {
+      // The label names the theme the control switches TO.
+      const label = isDark() ? btn.dataset.labelLight : btn.dataset.labelDark;
+      btn.setAttribute('aria-label', label);
+      btn.setAttribute('title', label);
+    };
+
+    btn.hidden = false;
+    sync();
+
+    btn.addEventListener('click', () => {
+      const next = isDark() ? 'light' : 'dark';
+      document.documentElement.dataset.theme = next;
+      try {
+        localStorage.setItem('theme', next);
+        // Shared with the rest of *.mihnk.org, so a choice made on the
+        // organisation site carries to the project sites and back.
+        document.cookie =
+          'mihnk-theme=' + next + ';path=/;max-age=31536000;domain=.mihnk.org;samesite=lax';
+      } catch (e) {}
+      sync();
+    });
+
+    prefersDark.addEventListener('change', () => {
+      if (!document.documentElement.dataset.theme) sync();
+    });
+  })();
+</script>

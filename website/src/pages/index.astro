@@ -5,6 +5,14 @@ import example from '../data/example.yaml?raw';
 
 const repo = 'https://github.com/mihnk/zoneroute';
 
+const flow = [
+  { name: 'ZoneRoute', detail: 'a Kubernetes resource' },
+  { name: 'Controller', detail: 'resolves conflicts, renders the fragment' },
+  { name: 'kube-system/coredns-custom', detail: 'data["zoneroute.server"]' },
+  { name: 'CoreDNS', detail: 'imports custom/*.server' },
+  { name: 'Upstream resolver', detail: 'answers for the zone' },
+];
+
 const reasons = [
   {
     term: 'Declarative Kubernetes API',
@@ -100,22 +108,38 @@ const compatibility = [
   description="ZoneRoute is a Kubernetes-native controller for declarative conditional DNS forwarding with CoreDNS."
   path=""
 >
-  <section class="hero wrap">
-    <div class="hero-copy">
-      <h1>Conditional DNS forwarding, the Kubernetes way.</h1>
-      <p class="lede">
+  <section class="hero">
+    <h1>
+      Conditional DNS forwarding,
+      <br />
+      the Kubernetes way.
+    </h1>
+
+    <div class="hero-lede">
+      <p>
         Define DNS forwarding routes as Kubernetes resources. ZoneRoute renders them for CoreDNS and
         publishes them into a single ConfigMap key — without taking ownership of your CoreDNS
         deployment.
       </p>
-      <p class="cta">
-        <a class="button" href="/docs/install/">
-          Get started
-        </a>
-        <a class="button-quiet" href={repo} rel="noopener noreferrer">
-          View on GitHub
-        </a>
-      </p>
+
+      <ul class="links">
+        <li>
+          <a class="link" href="/docs/install/">
+            Get started
+            <span class="arrow" aria-hidden="true">
+              &#8599;
+            </span>
+          </a>
+        </li>
+        <li>
+          <a class="link" href={repo} rel="noopener noreferrer">
+            GitHub
+            <span class="arrow" aria-hidden="true">
+              &#8599;
+            </span>
+          </a>
+        </li>
+      </ul>
     </div>
 
     <figure class="hero-example">
@@ -124,12 +148,12 @@ const compatibility = [
     </figure>
   </section>
 
-  <section class="band wrap" aria-labelledby="why">
+  <section class="band" aria-labelledby="why">
     <h2 id="why">Why ZoneRoute</h2>
     <ol class="reasons">
       {reasons.map(({ term, detail }, i) => (
-        <li>
-          <span class="index" aria-hidden="true">
+        <li class="reason">
+          <span class="reason-index" aria-hidden="true">
             {String(i + 1).padStart(2, '0')}
           </span>
           <h3>{term}</h3>
@@ -139,7 +163,7 @@ const compatibility = [
     </ol>
   </section>
 
-  <section class="band wrap" aria-labelledby="how">
+  <section class="band" aria-labelledby="how">
     <h2 id="how">How it works</h2>
     <p class="section-lede">
       ZoneRoute writes one key. CoreDNS picks it up through an import the administrator establishes
@@ -147,26 +171,17 @@ const compatibility = [
     </p>
 
     <ol class="flow" aria-label="From a ZoneRoute resource to an upstream resolver">
-      <li>
-        <strong>ZoneRoute</strong>
-        <span>a Kubernetes resource</span>
-      </li>
-      <li>
-        <strong>Controller</strong>
-        <span>resolves conflicts, renders the fragment</span>
-      </li>
-      <li>
-        <strong>kube-system/coredns-custom</strong>
-        <span>data["zoneroute.server"]</span>
-      </li>
-      <li>
-        <strong>CoreDNS</strong>
-        <span>imports custom/*.server</span>
-      </li>
-      <li>
-        <strong>Upstream resolver</strong>
-        <span>answers for the zone</span>
-      </li>
+      {flow.map(({ name, detail }, i) => (
+        <li>
+          <span class="flow-arrow" aria-hidden="true">
+            {i === 0 ? '' : '\u2193'}
+          </span>
+          <span>
+            <strong>{name}</strong>
+            <span class="detail">{detail}</span>
+          </span>
+        </li>
+      ))}
     </ol>
 
     <div class="ownership">
@@ -192,7 +207,7 @@ const compatibility = [
     </div>
   </section>
 
-  <section class="band wrap" aria-labelledby="guarantees">
+  <section class="band" aria-labelledby="guarantees">
     <h2 id="guarantees">Built to be boring in production</h2>
     <p class="section-lede">
       What the repository verifies before a release is cut. Nothing here is aspirational.
@@ -204,13 +219,15 @@ const compatibility = [
     </ul>
   </section>
 
-  <section class="band wrap" aria-labelledby="quickstart">
+  <section class="band" aria-labelledby="quickstart">
     <h2 id="quickstart">Quick start</h2>
-    <Code
-      code={`kubectl apply -f https://github.com/mihnk/zoneroute/releases/latest/download/install.yaml`}
-      lang="sh"
-      themes={{ light: 'github-light', dark: 'github-dark' }}
-    />
+    <div class="quickstart-code">
+      <Code
+        code="kubectl apply -f https://github.com/mihnk/zoneroute/releases/latest/download/install.yaml"
+        lang="sh"
+        themes={{ light: 'github-light', dark: 'github-dark' }}
+      />
+    </div>
     <p class="note">
       That installs the CRD, the namespace, the RBAC and the controller. CoreDNS wiring is a
       separate, one-time step — the controller never edits CoreDNS itself. See
@@ -237,7 +254,7 @@ const compatibility = [
     </div>
   </section>
 
-  <section class="band wrap" aria-labelledby="compatibility">
+  <section class="band" aria-labelledby="compatibility">
     <h2 id="compatibility">Compatibility</h2>
     <p class="section-lede">
       Kubernetes 1.31 or newer, for the CEL IP library the CRD validates addresses with. CoreDNS
@@ -271,306 +288,313 @@ const compatibility = [
     </p>
   </section>
 
-  <section class="band wrap closing" aria-labelledby="read">
+  <section class="band closing" aria-labelledby="read">
     <h2 id="read">Read the documentation</h2>
     <p>
       Installation, the CoreDNS integration contract, and a reason-by-reason troubleshooting guide.
     </p>
-    <p class="cta">
-      <a class="button" href="/docs/">
-        Documentation
-      </a>
-      <a class="button-quiet" href={`${repo}/releases`} rel="noopener noreferrer">
-        Releases
-      </a>
-    </p>
+    <ul class="links">
+      <li>
+        <a class="link" href="/docs/">
+          Documentation
+          <span class="arrow" aria-hidden="true">
+            &#8599;
+          </span>
+        </a>
+      </li>
+      <li>
+        <a class="link" href={`${repo}/releases`} rel="noopener noreferrer">
+          Releases
+          <span class="arrow" aria-hidden="true">
+            &#8599;
+          </span>
+        </a>
+      </li>
+    </ul>
   </section>
 </Base>
 
 <style>
-  h2 {
-    font-size: var(--step-3);
+  /* The organisation site's register: hairline rules, generous rhythm, no
+     cards. Sections are separated by a single line, not by boxes. */
+
+  .band {
+    margin-top: var(--space-3xl);
+  }
+
+  .band > h2 {
+    font-size: var(--step-2);
+    letter-spacing: -0.01em;
   }
 
   .section-lede,
   .note {
     max-width: var(--measure);
-    color: var(--muted);
     margin-top: var(--space-s);
-  }
-
-  .band {
-    padding-block: var(--space-2xl);
-    border-top: var(--border-hairline);
+    color: var(--muted);
+    text-wrap: pretty;
   }
 
   /* Hero ------------------------------------------------------------------ */
 
   .hero {
-    display: grid;
-    gap: var(--space-xl);
-    padding-block: var(--space-2xl);
-  }
-
-  @media (min-width: 60rem) {
-    .hero {
-      grid-template-columns: 1fr minmax(0, 26rem);
-      align-items: center;
-    }
+    padding-block: var(--space-2xl) 0;
   }
 
   .hero h1 {
     font-size: var(--step-4);
+    letter-spacing: -0.035em;
+    line-height: var(--leading-tight);
   }
 
-  .hero .lede {
+  .hero-lede {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: var(--space-m) var(--space-l);
+    margin-top: var(--space-l);
+    padding-top: var(--space-m);
+    border-top: var(--border-hairline);
+  }
+
+  .hero-lede p {
     max-width: var(--measure);
-    margin-top: var(--space-m);
-    font-size: var(--step-1);
     color: var(--muted);
+    font-size: var(--step-1);
+    text-wrap: pretty;
   }
 
-  .cta {
+  .links {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-s);
+    gap: var(--space-xs) var(--space-l);
+    padding: 0;
+    list-style: none;
+  }
+
+  .hero-example {
     margin-top: var(--space-l);
   }
 
-  .button,
-  .button-quiet {
-    display: inline-block;
-    padding: 0.6rem 1.1rem;
-    border-radius: var(--radius);
-    text-decoration: none;
-    font-size: var(--step--1);
-    font-weight: 500;
-  }
-
-  .button {
-    background-color: var(--accent);
-    color: var(--accent-contrast);
-  }
-
-  .button-quiet {
-    border: var(--border-hairline);
-  }
-
-  .button-quiet:hover {
-    border-color: var(--accent);
-  }
-
   .hero-example figcaption {
-    font-size: var(--step--1);
+    font-size: var(--step-00);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     color: var(--muted);
     margin-bottom: var(--space-2xs);
   }
 
-  /* Why ------------------------------------------------------------------- */
+  /* Why — the principles row, extended to five ------------------------------ */
 
   .reasons {
-    list-style: none;
-    padding: 0;
-    margin-top: var(--space-l);
     display: grid;
-    gap: var(--space-l);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-l) var(--space-xl);
+    margin-top: var(--space-l);
+    padding: 0;
+    list-style: none;
   }
 
-  @media (min-width: 52rem) {
-    .reasons {
-      grid-template-columns: repeat(2, 1fr);
-      gap: var(--space-l) var(--space-xl);
-    }
+  .reason {
+    display: grid;
+    align-content: start;
+    padding-top: var(--space-s);
+    border-top: var(--border-hairline);
   }
 
-  .reasons .index {
-    display: block;
-    font-family: var(--font-mono);
-    font-size: var(--step--1);
-    color: var(--accent);
+  .reason-index {
+    color: var(--muted);
+    font-size: var(--step-00);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.08em;
   }
 
-  .reasons h3 {
-    font-size: var(--step-1);
+  .reason h3 {
     margin-top: var(--space-2xs);
+    font-size: var(--step-1);
+    letter-spacing: -0.01em;
   }
 
-  .reasons p {
+  .reason p {
     margin-top: var(--space-2xs);
     color: var(--muted);
+    text-wrap: pretty;
   }
 
-  /* Flow ------------------------------------------------------------------ */
+  /* Flow ------------------------------------------------------------------- */
 
   .flow {
-    list-style: none;
-    padding: 0;
-    margin-top: var(--space-l);
     display: grid;
-    gap: var(--space-2xs);
+    gap: 0;
+    margin-top: var(--space-l);
+    padding: 0;
+    list-style: none;
+    max-width: 34rem;
   }
 
   .flow li {
-    position: relative;
-    padding: var(--space-s) var(--space-m);
-    border: var(--border-hairline);
-    border-radius: var(--radius);
-    background-color: var(--surface);
+    display: grid;
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+    align-items: baseline;
+    gap: var(--space-xs);
+    padding-block: var(--space-xs);
+    border-top: var(--border-hairline);
+  }
+
+  .flow li:last-child {
+    border-bottom: var(--border-hairline);
   }
 
   /* The arrow is decorative; the list order carries the meaning. */
-  .flow li + li::before {
-    content: '↓';
-    position: absolute;
-    top: calc(var(--space-2xs) * -1 - 0.7em);
-    left: var(--space-m);
-    color: var(--muted);
-    font-size: var(--step--1);
+  .flow-arrow {
+    color: var(--accent);
+    font-size: var(--step-00);
   }
 
   .flow strong {
     font-family: var(--font-mono);
-    font-size: var(--step--1);
+    font-size: var(--step-00);
+    font-weight: 400;
   }
 
-  .flow span {
+  .flow span.detail {
     display: block;
     color: var(--muted);
-    font-size: var(--step--1);
+    font-size: var(--step-00);
   }
 
-  /* Ownership ------------------------------------------------------------- */
+  /* Ownership -------------------------------------------------------------- */
 
   .ownership {
-    margin-top: var(--space-xl);
     display: grid;
-    gap: var(--space-l);
-  }
-
-  @media (min-width: 52rem) {
-    .ownership {
-      grid-template-columns: repeat(2, 1fr);
-      gap: var(--space-xl);
-    }
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-l) var(--space-xl);
+    margin-top: var(--space-xl);
   }
 
   .ownership h3 {
+    padding-top: var(--space-s);
+    border-top: var(--border-hairline);
     font-size: var(--step-1);
-    padding-bottom: var(--space-2xs);
-    border-bottom: var(--border-hairline);
+    letter-spacing: -0.01em;
   }
 
   .marked {
-    list-style: none;
-    padding: 0;
-    margin-top: var(--space-s);
     display: grid;
     gap: var(--space-2xs);
-    font-size: var(--step--1);
+    margin-top: var(--space-s);
+    padding: 0;
+    list-style: none;
+    font-size: var(--step-00);
   }
 
   /* The marker is a word, not a colour, so the distinction survives
      monochrome printing and colour-blindness. */
+  .marked li {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+    gap: var(--space-xs);
+  }
+
   .marked li::before {
     content: attr(data-mark);
-    display: inline-block;
-    min-width: 4.5rem;
-    margin-right: var(--space-xs);
-    font-family: var(--font-mono);
-    font-size: 0.8em;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
     color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
   }
 
   .marked li[data-mark='writes']::before {
     color: var(--accent);
   }
 
-  /* Guarantees ------------------------------------------------------------ */
+  /* Guarantees ------------------------------------------------------------- */
 
   .guarantees {
-    list-style: none;
-    padding: 0;
-    margin-top: var(--space-l);
     display: grid;
-    gap: var(--space-2xs);
-  }
-
-  @media (min-width: 52rem) {
-    .guarantees {
-      grid-template-columns: repeat(2, 1fr);
-      gap: var(--space-2xs) var(--space-xl);
-    }
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2xs) var(--space-xl);
+    margin-top: var(--space-l);
+    padding: 0;
+    list-style: none;
+    font-size: var(--step-00);
   }
 
   .guarantees li {
-    padding-left: 1.4rem;
     position: relative;
+    padding-left: 1.1rem;
+    padding-block: 0.15rem;
   }
 
   .guarantees li::before {
-    content: '✓';
+    content: '·';
     position: absolute;
-    left: 0;
+    left: 0.25rem;
     color: var(--accent);
   }
 
-  /* Quick start ----------------------------------------------------------- */
+  /* Quick start ------------------------------------------------------------ */
+
+  .quickstart-code {
+    margin-top: var(--space-l);
+  }
 
   .status {
     margin-top: var(--space-xl);
-    padding: var(--space-m);
-    border: var(--border-hairline);
-    border-radius: var(--radius);
+    padding-top: var(--space-s);
+    border-top: var(--border-hairline);
   }
 
   .status h3 {
     font-size: var(--step-1);
+    letter-spacing: -0.01em;
   }
 
   .status dl {
-    margin-top: var(--space-s);
     display: grid;
-    gap: var(--space-2xs);
+    gap: var(--space-2xs) var(--space-s);
+    margin-top: var(--space-s);
+    font-size: var(--step-00);
   }
 
   @media (min-width: 40rem) {
     .status dl {
-      grid-template-columns: 8rem minmax(0, 1fr);
-      gap: var(--space-2xs) var(--space-s);
+      grid-template-columns: 7rem minmax(0, 1fr);
     }
   }
 
   .status dt {
     font-family: var(--font-mono);
-    font-size: var(--step--1);
     color: var(--accent);
   }
 
   .status dd {
     margin: 0;
     color: var(--muted);
-    font-size: var(--step--1);
   }
 
   .caveat {
-    margin-top: var(--space-s);
-    padding-top: var(--space-s);
-    border-top: var(--border-hairline);
-    font-size: var(--step--1);
+    max-width: var(--measure);
+    margin-top: var(--space-m);
     color: var(--muted);
+    font-size: var(--step-00);
   }
 
-  /* Compatibility --------------------------------------------------------- */
+  .caveat strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* Compatibility ---------------------------------------------------------- */
 
   table {
-    margin-top: var(--space-l);
-    width: 100%;
     display: block;
+    width: 100%;
+    margin-top: var(--space-l);
     overflow-x: auto;
     border-collapse: collapse;
-    font-size: var(--step--1);
+    font-size: var(--step-00);
   }
 
   th,
@@ -583,19 +607,43 @@ const compatibility = [
 
   thead th {
     background-color: var(--surface);
+    font-weight: 600;
   }
 
   .status-tag {
     font-family: var(--font-mono);
-    font-size: 0.85em;
     white-space: nowrap;
   }
 
-  /* Closing --------------------------------------------------------------- */
+  /* Closing ---------------------------------------------------------------- */
+
+  .closing {
+    padding-bottom: var(--space-xl);
+  }
 
   .closing p {
     max-width: var(--measure);
     margin-top: var(--space-s);
     color: var(--muted);
+  }
+
+  .closing .links {
+    margin-top: var(--space-l);
+  }
+
+  /* Narrow screens --------------------------------------------------------- */
+
+  @media (max-width: 48rem) {
+    .reasons,
+    .ownership,
+    .guarantees {
+      grid-template-columns: 1fr;
+      gap: var(--space-m);
+    }
+
+    .hero-lede {
+      grid-template-columns: 1fr;
+      align-items: start;
+    }
   }
 </style>
