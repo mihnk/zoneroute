@@ -31,7 +31,7 @@ then what is known about managed platforms.
    `reload` hashes the parsed configuration, imports included, so a changed
    `zoneroute.server` is loaded within the reload interval (30 s ± 15 s by
    default) without restarting CoreDNS.
-7. CoreDNS listens on port 53. ZoneRoute v0.1 identifies existing listeners
+7. CoreDNS listens on port 53. ZoneRoute identifies existing listeners
    as `zone:53`; a CoreDNS process started with a non-default `-dns.port` is
    outside the contract.
 
@@ -159,7 +159,7 @@ managed Corefile by hand expecting it to stick. Self-managed CoreDNS on EKS
 is an ordinary Deployment and the kubeadm steps apply, but no EKS
 configuration has been validated by this repository.
 
-### GKE — unsupported in v0.1
+### GKE — unsupported
 
 GKE clusters use kube-dns or Cloud DNS, not CoreDNS. There is no integration
 point for the fragment.
