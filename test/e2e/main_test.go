@@ -13,10 +13,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"testing"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -444,6 +446,102 @@ func podReady(p corev1.Pod) bool {
 		}
 	}
 	return false
+}
+
+// --- CoreDNS replicas --------------------------------------------------
+
+// The e2e environment runs CoreDNS with one replica for speed (see
+// hack/wire-coredns.sh). A scenario that needs the real kubeadm shape — two
+// replicas reloading on their own schedules — asks for it here and restores
+// what it found.
+
+// coreDNSReplicas reports the CoreDNS Deployment's desired replica count.
+func coreDNSReplicas(t *testing.T) int32 {
+	t.Helper()
+	var d appsv1.Deployment
+	if err := kube.Get(ctx, types.NamespacedName{Namespace: coreDNSNamespace, Name: "coredns"}, &d); err != nil {
+		t.Fatalf("reading the CoreDNS Deployment: %v", err)
+	}
+	if d.Spec.Replicas == nil {
+		return 1
+	}
+	return *d.Spec.Replicas
+}
+
+// readyCoreDNSPods returns the Ready, non-terminating CoreDNS pods that have
+// an IP, plus a description of every pod seen, for failure messages. A
+// terminating pod is never counted: during a scale-down it still answers for
+// a while, and counting it would let a scenario query a pod that is going
+// away.
+func readyCoreDNSPods(t *testing.T) (ips []string, observed string) {
+	t.Helper()
+	var pods corev1.PodList
+	if err := kube.List(ctx, &pods, client.InNamespace(coreDNSNamespace), client.MatchingLabels{"k8s-app": "kube-dns"}); err != nil {
+		return nil, err.Error()
+	}
+	seen := map[string]bool{}
+	var described []string
+	for _, p := range pods.Items {
+		state := string(p.Status.Phase)
+		switch {
+		case p.DeletionTimestamp != nil:
+			state = "Terminating"
+		case podReady(p):
+			state = "Ready"
+		}
+		described = append(described, fmt.Sprintf("%s[%s %s]", p.Name, state, p.Status.PodIP))
+		if p.DeletionTimestamp == nil && podReady(p) && p.Status.PodIP != "" && !seen[p.Status.PodIP] {
+			seen[p.Status.PodIP] = true
+			ips = append(ips, p.Status.PodIP)
+		}
+	}
+	sort.Strings(ips)
+	return ips, strings.Join(described, ", ")
+}
+
+// waitCoreDNSReplicas waits until the Deployment wants n replicas and n
+// Ready, non-terminating pods with distinct IPs exist. Returns those IPs.
+//
+// The pod-level conditions are what the DNS assertions depend on: a settled
+// Deployment status alone would not tell a caller which pods it may query.
+func waitCoreDNSReplicas(t *testing.T, n int32) []string {
+	t.Helper()
+	var ips []string
+	eventually(t, rolloutTimeout, fmt.Sprintf("%d CoreDNS replicas Ready with distinct IPs", n), func() (bool, string) {
+		var d appsv1.Deployment
+		if err := kube.Get(ctx, types.NamespacedName{Namespace: coreDNSNamespace, Name: "coredns"}, &d); err != nil {
+			return false, err.Error()
+		}
+		desired := int32(1)
+		if d.Spec.Replicas != nil {
+			desired = *d.Spec.Replicas
+		}
+		got, observed := readyCoreDNSPods(t)
+		state := fmt.Sprintf("desired=%d updated=%d available=%d ready pods=%d (%s)",
+			desired, d.Status.UpdatedReplicas, d.Status.AvailableReplicas, len(got), observed)
+		if desired != n || len(got) != int(n) {
+			return false, state
+		}
+		ips = got
+		return true, state
+	})
+	return ips
+}
+
+// setCoreDNSReplicas scales CoreDNS and waits for the cluster to settle on
+// that many usable pods. It does not register any cleanup; callers decide
+// the order in which state is restored.
+func setCoreDNSReplicas(t *testing.T, n int32) []string {
+	t.Helper()
+	body, err := json.Marshal(map[string]any{"spec": map[string]any{"replicas": n}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Namespace: coreDNSNamespace, Name: "coredns"}}
+	if err := kube.Patch(ctx, d, client.RawPatch(types.MergePatchType, body)); err != nil {
+		t.Fatalf("scaling CoreDNS to %d: %v", n, err)
+	}
+	return waitCoreDNSReplicas(t, n)
 }
 
 // restartController deletes the controller pod and waits for a new one to
