@@ -1,0 +1,9 @@
+# The two forms above are the way into this tracker; a blank issue arrives
+# without the version, the status or the wiring, which is what every ZoneRoute
+# question turns on.
+blank_issues_enabled: false
+
+contact_links:
+  - name: Documentation
+    url: https://zoneroute.mihnk.org/docs/
+    about: Installation, the CoreDNS integration contract, and a reason-by-reason troubleshooting guide.

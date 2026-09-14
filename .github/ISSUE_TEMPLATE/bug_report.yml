@@ -1,0 +1,94 @@
+name: Bug report
+description: Something in ZoneRoute is not working as documented.
+labels:
+  - bug
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not report security vulnerabilities here.** Send them privately to
+        <security@mihnk.org>.
+
+        If the problem is that CoreDNS is not picking ZoneRoute up — the zone
+        does not resolve, `Published` is `False`, the fragment is written but
+        nothing changes — use the **ZoneRoute and CoreDNS integration** form
+        instead: it asks for the wiring details that problem needs.
+
+        [docs/troubleshooting.md](https://zoneroute.mihnk.org/docs/troubleshooting/)
+        has the commands that collect what is asked for below. Review anything
+        you paste: zone names and resolver addresses are often internal.
+        Redact what you must and say that you did. Never include Secrets,
+        credentials or a kubeconfig.
+
+  - type: checkboxes
+    id: existing-issues
+    attributes:
+      label: Existing issues
+      options:
+        - label: I have searched the existing issues.
+          required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: input
+    id: zoneroute-version
+    attributes:
+      label: ZoneRoute version
+      description: A release tag, an image tag or digest, or a commit.
+      placeholder: v0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: kubernetes-version
+    attributes:
+      label: Kubernetes version
+      description: "`kubectl version` — the server version is the one that matters."
+      placeholder: v1.31.14
+    validations:
+      required: true
+
+  - type: textarea
+    id: zoneroute-object
+    attributes:
+      label: The ZoneRoute and its status
+      description: "`kubectl get zoneroute <name> -o yaml`, including `status`."
+      render: yaml
+    validations:
+      required: true
+
+  - type: textarea
+    id: controller-logs
+    attributes:
+      label: Controller logs
+      description: "`kubectl -n zoneroute-system logs deployment/zoneroute-controller`"
+      render: shell
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
