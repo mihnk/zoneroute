@@ -125,6 +125,10 @@ See [DNS does not resolve](#dns-does-not-resolve).
 Every reason above is a constant in `api/v1alpha1/types.go`; each condition
 carries a `message` naming the specific zones, routes or files involved.
 
+> Condition messages are intended for humans and may change between releases.
+> Automation should use condition `type`, `status`, and `reason` instead of
+> parsing message text.
+
 ### Accepted: reason `Accepted`
 
 **Means.** The route passed the reserved-zone and conflict checks and is

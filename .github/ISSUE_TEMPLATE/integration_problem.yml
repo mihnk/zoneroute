@@ -1,0 +1,145 @@
+name: ZoneRoute and CoreDNS integration
+description: The controller and CoreDNS are not working together — the wiring, the fragment, or name resolution.
+labels:
+  - area/coredns
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not report security vulnerabilities here.** Send them privately to
+        <security@mihnk.org>.
+
+        ZoneRoute publishes one key into one ConfigMap and CoreDNS picks it up
+        through an import the administrator establishes once. Most problems
+        here are in that contract rather than in the controller, so this form
+        asks about the wiring:
+        [docs/coredns-wiring.md](https://zoneroute.mihnk.org/docs/coredns-wiring/)
+        describes it, and
+        [docs/troubleshooting.md](https://zoneroute.mihnk.org/docs/troubleshooting/)
+        has the commands that answer these questions.
+
+        A Corefile and the `*.server` keys describe your internal DNS zones and
+        resolver addresses. Redact what you must and say that you did. Paste
+        only the parts that matter — never Secrets, credentials, a kubeconfig,
+        or a full cluster dump.
+
+  - type: checkboxes
+    id: existing-issues
+    attributes:
+      label: Existing issues
+      options:
+        - label: I have searched the existing issues.
+          required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to configure?
+      description: The zones you want forwarded, and where to.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happens instead?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      description: How CoreDNS is managed in this cluster.
+      options:
+        - kind or kubeadm-style CoreDNS
+        - Self-managed CoreDNS
+        - AKS
+        - Gardener
+        - EKS
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: zoneroute-version
+    attributes:
+      label: ZoneRoute version
+      description: A release tag, an image tag or digest, or a commit.
+      placeholder: v0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: kubernetes-version
+    attributes:
+      label: Kubernetes version
+      placeholder: v1.31.14
+    validations:
+      required: true
+
+  - type: input
+    id: coredns-version
+    attributes:
+      label: CoreDNS version or image
+      description: "`kubectl -n kube-system get deployment coredns -o jsonpath='{.spec.template.spec.containers[0].image}'`"
+      placeholder: registry.k8s.io/coredns/coredns:v1.11.3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: wiring
+    attributes:
+      label: Does the Corefile contain a top-level `import custom/*.server`?
+      description: "`kubectl -n kube-system get configmap coredns -o jsonpath='{.data.Corefile}' | grep -n import`"
+      options:
+        - "Yes"
+        - "No"
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: conditions
+    attributes:
+      label: Accepted and Published conditions
+      description: The `status.conditions` of the affected ZoneRoute — the type, status and reason of each.
+      render: yaml
+    validations:
+      required: true
+
+  - type: textarea
+    id: corefile
+    attributes:
+      label: Relevant part of the Corefile
+      description: The server block and the import line. Redact zone names you cannot share.
+      render: text
+
+  - type: textarea
+    id: coredns-custom
+    attributes:
+      label: coredns-custom keys
+      description: |
+        The key *names* — `kubectl -n kube-system get configmap coredns-custom -o go-template='{{range $k, $v := .data}}{{$k}}{{"\n"}}{{end}}'`
+        — plus the content of any `*.server` key involved in the problem.
+      render: text
+
+  - type: textarea
+    id: manifest
+    attributes:
+      label: The ZoneRoute
+      description: "`kubectl get zoneroute <name> -o yaml`"
+      render: yaml
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Controller and CoreDNS logs
+      description: Only the lines around the problem.
+      render: shell
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
