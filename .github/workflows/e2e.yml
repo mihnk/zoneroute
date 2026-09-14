@@ -1,9 +1,29 @@
 name: e2e
 
+# The suite builds a kind cluster and takes about fifteen minutes, so it runs
+# only when something it could actually break has changed. `paths-ignore`
+# rather than `paths`: anything new — a package, a manifest directory — runs
+# the suite by default, and only the paths listed here are known to be
+# irrelevant to it.
+#
+# Documentation still gets tested: `verify` runs unfiltered, and docs/docs_test.go
+# and config/install_test.go check the Markdown and the manifests there.
 on:
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'website/**'
+      - 'LICENSE'
+      - '.github/workflows/website.yml'
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'website/**'
+      - 'LICENSE'
+      - '.github/workflows/website.yml'
 
 permissions: {}
 
