@@ -1,0 +1,57 @@
+name: Feature request
+description: Suggest a change to ZoneRoute.
+labels:
+  - enhancement
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not report security vulnerabilities here.** Send them privately to
+        <security@mihnk.org>.
+
+        Start with the problem rather than the solution. ZoneRoute stays small
+        on purpose, and the strongest case for a change is a situation it
+        handles badly today — a proposal without that is hard to judge, and
+        harder to design against.
+
+        Whatever you paste, review it first: never include Secrets,
+        credentials, a kubeconfig, or internal hostnames and addresses you
+        cannot share.
+
+  - type: checkboxes
+    id: existing-issues
+    attributes:
+      label: Existing issues
+      options:
+        - label: I have searched the existing issues.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: |
+        The situation you are in, and what makes it awkward today. Describe
+        the problem, not the feature you have in mind — that comes next.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What behaviour would you expect?
+      description: Roughly what ZoneRoute should do instead. A sketch is enough; the design is a conversation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What have you tried or considered?
+      description: Workarounds, other tools, or approaches you ruled out — and why they did not fit.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else

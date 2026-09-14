@@ -16,6 +16,11 @@ on:
       - 'website/**'
       - 'LICENSE'
       - '.github/workflows/website.yml'
+      # Repository maintenance: an issue form or the Dependabot schedule
+      # cannot change what the controller does. Workflow files themselves
+      # stay absent from this list, so a change to e2e.yml still runs e2e.
+      - '.github/dependabot.yml'
+      - '.github/ISSUE_TEMPLATE/**'
   push:
     branches: [main]
     paths-ignore:
@@ -24,6 +29,11 @@ on:
       - 'website/**'
       - 'LICENSE'
       - '.github/workflows/website.yml'
+      # Repository maintenance: an issue form or the Dependabot schedule
+      # cannot change what the controller does. Workflow files themselves
+      # stay absent from this list, so a change to e2e.yml still runs e2e.
+      - '.github/dependabot.yml'
+      - '.github/ISSUE_TEMPLATE/**'
 
 permissions: {}
 

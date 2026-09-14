@@ -4,6 +4,86 @@ This file is the source of the GitHub Release notes: the release workflow
 takes the section of the version being released and appends the exact install
 URL and image digest, which are only known once the image is published.
 
+## v0.2.0
+
+Production hardening. No API, controller or rendering change: what ZoneRoute
+does is byte-for-byte what v0.1.0 did, and an upgrade is an in-place
+`kubectl apply` over the previous version. What changed is how much of that
+behaviour is proven before a release goes out.
+
+### Verified before a release
+
+- **The upgrade path itself.** A lane installs the exact v0.1.0 release —
+  fetched by its published checksum, running the digest-pinned image it
+  ships — creates a route, proves DNS resolves, then applies the working tree
+  over it. The ZoneRoute and the CRD keep their UIDs, the spec and generation
+  are unchanged, conditions reconverge, the fragment is identical byte for
+  byte, and the same route still resolves. No deletion, no migration, no
+  manual step.
+- **Two Kubernetes versions.** The supported floor, 1.31, remains the
+  authoritative target on every pull request. A second lane runs the CRD
+  checks, the install bundle and the functional suite against a newer pinned
+  release weekly. 1.31 is still the minimum; the newer lane demonstrates
+  forward compatibility rather than widening what is supported.
+- **Multi-replica CoreDNS.** The default two-replica layout is back in the
+  required pull-request path: each replica reloads on its own schedule, and a
+  fragment that reaches only one of them now fails the suite.
+- **Transient Kubernetes API failures.** A failing list, a failing ConfigMap
+  read and a lost optimistic-concurrency race on the status subresource are
+  each returned rather than swallowed, publish nothing they did not achieve,
+  and converge on the next reconcile.
+
+### Project
+
+- Dependency updates for the Go module graph, the workflow actions and the
+  container base images, weekly and bounded. The Kubernetes test images and
+  the kind versions stay manual: which versions ZoneRoute supports is a
+  decision, not an update.
+- Issue forms for bug reports and for CoreDNS integration problems, asking
+  for the evidence a report needs and drawing an explicit line around what
+  must never be pasted into a public tracker.
+- A project site at [zoneroute.mihnk.org](https://zoneroute.mihnk.org),
+  rendering the same Markdown that lives in this repository.
+
+### Baseline
+
+Unchanged from v0.1.0: Kubernetes 1.31 or newer, CoreDNS 1.7.0 or newer with
+the `reload` plugin.
+
+### Known limitations
+
+Unchanged from v0.1.0 — nothing in this release altered the integration
+contract or the API:
+
+- CoreDNS only; there is no integration with any other DNS server.
+- Kubernetes 1.31 and CoreDNS 1.7.0 are hard minimums.
+- The standard CoreDNS listener on port 53 is assumed; a CoreDNS started with
+  a non-default `-dns.port` is outside the integration contract.
+- Upstreams are IP addresses only — hostnames are rejected.
+- Upstreams are tried sequentially, in the order given; there is no other
+  policy.
+- Reverse zones are not managed: `in-addr.arpa` and `ip6.arpa` are rejected.
+- The controller does not verify that CoreDNS reloaded the fragment, that the
+  mount is healthy, or that an upstream resolver is reachable. `Published`
+  reports what was written, not what resolves.
+- The controller does not create `kube-system/coredns-custom` and does not
+  wire CoreDNS; both remain installation steps.
+
+### Upgrading from v0.1.0
+
+Apply the new release over the old one. The CRD is unchanged, existing
+ZoneRoutes are untouched, and `coredns-custom` keeps its keys:
+
+```sh
+kubectl apply -f https://github.com/mihnk/zoneroute/releases/download/v0.2.0/install.yaml
+```
+
+### Documentation
+
+[Installation](docs/install.md) ·
+[CoreDNS wiring](docs/coredns-wiring.md) ·
+[Troubleshooting](docs/troubleshooting.md)
+
 ## v0.1.0
 
 First public release.
