@@ -1,0 +1,57 @@
+name: upgrade
+
+# Proves that a cluster running the released v0.1.0 can be upgraded to the
+# working tree in place. It needs two installs and two DNS convergences, so
+# it does not gate ordinary pull requests.
+#
+# The pull_request trigger exists to make the upgrade machinery itself
+# self-validating. It is not a claim that these paths are the only things
+# that can break an upgrade: controller behaviour, rendering, RBAC and the
+# Deployment can all affect it, which is why the lane also runs on every
+# merge to main and is run explicitly before a release.
+on:
+  pull_request:
+    paths:
+      - 'test/e2e/upgrade_test.go'
+      - 'test/e2e/main_test.go'
+      - 'hack/upgrade-e2e.sh'
+      - '.github/workflows/upgrade.yml'
+      - 'Makefile'
+      - 'config/crd/**'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: upgrade-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  upgrade:
+    # The versions are in the name, so a failure says what was upgraded.
+    name: v0.1.0 to working tree
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Upgrade from the v0.1.0 release
+        run: make test-e2e-upgrade
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: upgrade-diagnostics
+          path: hack/.e2e/diag
+          if-no-files-found: ignore
