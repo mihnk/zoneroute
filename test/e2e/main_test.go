@@ -1,10 +1,17 @@
-//go:build e2e
+//go:build e2e || e2e_upgrade
 
 // Package e2e is the functional suite. It expects a cluster prepared by
 // hack/e2e.sh: KUBECONFIG set, CoreDNS wired to the integration contract,
 // the controller installed from the production manifests, and the fixtures
-// in manifests/ running. Without the e2e build tag nothing here compiles, so
-// `go test ./...` never touches a cluster.
+// in manifests/ running.
+//
+// The helpers here are shared with the upgrade lane (hack/upgrade-e2e.sh,
+// build tag e2e_upgrade), which prepares the same cluster but installs the
+// v0.1.0 release first. Nothing in TestMain assumes which controller version
+// is running.
+//
+// Without one of the build tags nothing here compiles, so `go test ./...`
+// never touches a cluster.
 package e2e
 
 import (
@@ -21,6 +28,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -69,6 +77,11 @@ func TestMain(m *testing.M) {
 		fail(err)
 	}
 	if err := v1alpha1.AddToScheme(scheme); err != nil {
+		fail(err)
+	}
+	// The upgrade lane reads the CRD itself, to prove it was reconfigured
+	// rather than recreated.
+	if err := apiextensionsv1.AddToScheme(scheme); err != nil {
 		fail(err)
 	}
 	c, err := client.New(ctrl.GetConfigOrDie(), client.Options{Scheme: scheme})

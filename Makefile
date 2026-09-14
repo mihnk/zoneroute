@@ -40,7 +40,7 @@ KIND_NODE_IMAGE ?= $(KIND_NODE_IMAGE_MINIMUM)
 # name, so it is not overridable here.
 E2E_IMAGE := zoneroute-controller:e2e
 
-.PHONY: generate install-manifest verify-generate build build-image vet test verify-crd verify-crd-newer verify-install verify-install-newer test-e2e test-e2e-newer release-check release-manifest
+.PHONY: generate install-manifest verify-generate build build-image vet test verify-crd verify-crd-newer verify-install verify-install-newer test-e2e test-e2e-newer test-e2e-upgrade release-check release-manifest
 
 ## generate: regenerate deepcopy code, the CRD manifest and install.yaml.
 generate:
@@ -108,6 +108,12 @@ verify-install-newer:
 ## test-e2e-newer: the functional suite against the newer pinned Kubernetes.
 test-e2e-newer:
 	$(MAKE) test-e2e $(NEWER)
+
+## test-e2e-upgrade: install the v0.1.0 release on a throwaway cluster, then
+## apply the working tree over it and prove the existing routes survive.
+## Runs on the minimum lane: this tests the upgrade, not a Kubernetes version.
+test-e2e-upgrade:
+	KIND="$(KIND)" KIND_NODE_IMAGE="$(KIND_NODE_IMAGE)" KUSTOMIZE="$(KUSTOMIZE)" E2E_IMAGE="$(E2E_IMAGE)" hack/upgrade-e2e.sh
 
 ## release-check: validate VERSION and render the release artifacts locally.
 ## Publishes nothing. Example: VERSION=v0.1.0 make release-check
