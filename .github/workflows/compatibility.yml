@@ -1,0 +1,67 @@
+name: compatibility
+
+# Forward compatibility against one newer pinned Kubernetes, on a weekly
+# cadence rather than per pull request: the suite needs a kind cluster and
+# about fifteen minutes, and the minimum version — not this one — is what
+# ZoneRoute promises to support.
+#
+# A failure here is a compatibility report. It does not change the supported
+# floor, and it does not gate pull requests.
+on:
+  # On a pull request only when the compatibility machinery itself changes,
+  # so a change to the lane validates itself while ordinary pull requests
+  # keep waiting for one cluster, not two.
+  pull_request:
+    paths:
+      - 'Makefile'
+      - 'hack/**'
+      - 'test/e2e/**'
+      - '.github/workflows/compatibility.yml'
+  push:
+    branches: [main]
+  schedule:
+    # Mondays, 06:00 UTC — one run a week, early enough to be triaged.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: compatibility-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  kubernetes-newer:
+    # The version is in the name, so a failure says which Kubernetes broke.
+    name: kubernetes 1.36
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      # The same helper scripts and the same scenarios as the minimum lane.
+      # The node image lives in the Makefile; nothing is pinned twice.
+      - name: CRD schema and CEL rules
+        run: make verify-crd-newer
+
+      - name: Install bundle
+        run: make verify-install-newer
+
+      - name: Functional suite
+        run: make test-e2e-newer
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: compatibility-diagnostics
+          path: hack/.e2e/diag
+          if-no-files-found: ignore

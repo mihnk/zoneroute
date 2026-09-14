@@ -24,7 +24,9 @@ $KIND create cluster --name "$cluster" --image "$KIND_NODE_IMAGE" --wait 120s >/
 k() { kubectl --context "$ctx" "$@"; }
 
 echo "==> installing CRD"
-k apply -f config/crd/ >/dev/null
+# The file, not the directory: config/crd also holds the kustomization
+# that config/default builds on, and that is not a cluster resource.
+k apply -f config/crd/dns.mihnk.org_zoneroutes.yaml >/dev/null
 k wait --for=condition=Established crd/zoneroutes.dns.mihnk.org --timeout=60s >/dev/null
 
 fail=0

@@ -84,8 +84,11 @@ kubectl run -it --rm dnsq --image=registry.k8s.io/e2e-test-images/agnhost:2.66.1
 | CoreDNS | 1.7.0 | the `reload` plugin detects changes in imported files from 1.7.0 |
 | Go | 1.26 | development only |
 
-The integration is validated on kind/kubeadm-style CoreDNS by the e2e suite.
-Other environments are described conservatively in
+The integration is validated on kind/kubeadm-style CoreDNS by the e2e suite,
+which runs against the supported minimum on every pull request and against one
+newer pinned Kubernetes weekly. 1.31 remains the floor: the newer lane shows
+forward compatibility, it does not widen what is supported. Other environments
+are described conservatively in
 [docs/coredns-wiring.md](docs/coredns-wiring.md#managed-providers).
 
 ## Development
