@@ -8,9 +8,11 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,11 +32,21 @@ const (
 var t0 = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 
 // counters records API writes so tests can assert that nothing unnecessary
-// was written.
+// was written, and carries the failures a test wants the API to return.
+// Every error field is consulted on each call, so a test can inject a
+// failure, reconcile, clear it, and reconcile again.
 type counters struct {
 	patches       int
 	statusUpdates int
-	patchErr      error
+
+	patchErr  error // returned by Patch
+	listErr   error // returned when listing ZoneRoutes
+	statusErr error // returned by the status subresource update
+
+	// getErr is returned when the named ConfigMap in CoreDNSNamespace is
+	// read; other reads are unaffected.
+	getErr  error
+	getName string
 }
 
 type fixture struct {
@@ -68,7 +80,24 @@ func newFixture(t *testing.T, objs ...client.Object) *fixture {
 			},
 			SubResourceUpdate: func(ctx context.Context, cl client.Client, subResourceName string, obj client.Object, opts ...client.SubResourceUpdateOption) error {
 				count.statusUpdates++
+				if count.statusErr != nil {
+					return count.statusErr
+				}
 				return cl.SubResource(subResourceName).Update(ctx, obj, opts...)
+			},
+			List: func(ctx context.Context, cl client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
+				if count.listErr != nil {
+					if _, ok := list.(*v1alpha1.ZoneRouteList); ok {
+						return count.listErr
+					}
+				}
+				return cl.List(ctx, list, opts...)
+			},
+			Get: func(ctx context.Context, cl client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+				if count.getErr != nil && key.Namespace == CoreDNSNamespace && key.Name == count.getName {
+					return count.getErr
+				}
+				return cl.Get(ctx, key, obj, opts...)
 			},
 		}).
 		Build()
@@ -520,4 +549,195 @@ func TestClusterDomain(t *testing.T) {
 			t.Errorf("ClusterDomain(%q): want error, got nil", in)
 		}
 	}
+}
+
+// The controller's contract on a failing Kubernetes API: the error reaches
+// controller-runtime so the work item is requeued, no condition claims
+// success the run did not achieve, and a later clean reconcile converges to
+// exactly the state a never-failing run would have produced.
+//
+// Status is written per object, so a failure partway legitimately leaves
+// earlier objects updated. These tests describe that; they do not demand
+// that the controller make status updates atomic.
+
+// clean returns the fragment and conditions produced by a reconcile that
+// never fails, for the same input.
+func clean(t *testing.T, objs ...client.Object) (fragment string, conditions map[string]metav1.Condition) {
+	t.Helper()
+	f := newFixture(t, objs...)
+	f.mustReconcile()
+	frag, _ := f.fragment()
+	conds := map[string]metav1.Condition{}
+	for _, obj := range objs {
+		zr, ok := obj.(*v1alpha1.ZoneRoute)
+		if !ok {
+			continue
+		}
+		for _, ct := range []string{v1alpha1.ConditionAccepted, v1alpha1.ConditionPublished} {
+			conds[zr.Name+"/"+ct] = f.condition(zr.Name, ct)
+		}
+	}
+	return frag, conds
+}
+
+// sameAsClean asserts that f has converged to what a never-failing reconcile
+// produces. LastTransitionTime is not compared: it legitimately differs.
+func (f *fixture) sameAsClean(fragment string, conditions map[string]metav1.Condition) {
+	f.t.Helper()
+	if got, _ := f.fragment(); got != fragment {
+		f.t.Errorf("fragment after retry differs from a clean run\n--- got ---\n%s--- want ---\n%s", got, fragment)
+	}
+	for key, want := range conditions {
+		name, condType, _ := strings.Cut(key, "/")
+		got := f.condition(name, condType)
+		if got.Status != want.Status || got.Reason != want.Reason || got.Message != want.Message ||
+			got.ObservedGeneration != want.ObservedGeneration {
+			f.t.Errorf("ZoneRoute %s %s after retry = %s/%s (gen %d, %q), want %s/%s (gen %d, %q)",
+				name, condType, got.Status, got.Reason, got.ObservedGeneration, got.Message,
+				want.Status, want.Reason, want.ObservedGeneration, want.Message)
+		}
+	}
+}
+
+func TestListFailureIsReturnedAndRetryConverges(t *testing.T) {
+	objs := func() []client.Object {
+		return []client.Object{
+			corednsCM(corefileWired),
+			customCM(map[string]string{}),
+			zoneRoute("r", t0, 1, []string{"x.test"}, "10.0.0.1"),
+		}
+	}
+	wantFragment, wantConditions := clean(t, objs()...)
+
+	f := newFixture(t, objs()...)
+	f.count.listErr = errors.New("api unavailable")
+
+	err := f.reconcile()
+	if err == nil || !strings.Contains(err.Error(), "api unavailable") {
+		t.Fatalf("Reconcile error = %v, want the list failure", err)
+	}
+	if f.count.patches != 0 || f.count.statusUpdates != 0 {
+		t.Errorf("writes while listing failed = patches %d, status %d; want none", f.count.patches, f.count.statusUpdates)
+	}
+	if len(f.route("r").Status.Conditions) != 0 {
+		t.Errorf("status must not be written when the route list is unknown")
+	}
+
+	f.count.listErr = nil
+	f.mustReconcile()
+	f.sameAsClean(wantFragment, wantConditions)
+}
+
+// Reading either CoreDNS ConfigMap can fail for reasons other than NotFound.
+// NotFound on coredns-custom is a documented state (IntegrationConfigMissing)
+// and is covered elsewhere; any other error must fail closed.
+func TestConfigMapGetFailureFailsClosedAndRetryConverges(t *testing.T) {
+	for _, name := range []string{corefileConfigMap, integrationConfigMap} {
+		t.Run(name, func(t *testing.T) {
+			objs := func() []client.Object {
+				return []client.Object{
+					corednsCM(corefileWired),
+					customCM(map[string]string{}),
+					zoneRoute("r", t0, 1, []string{"x.test"}, "10.0.0.1"),
+				}
+			}
+			wantFragment, wantConditions := clean(t, objs()...)
+
+			f := newFixture(t, objs()...)
+			f.count.getErr, f.count.getName = errors.New("etcd is having a day"), name
+
+			err := f.reconcile()
+			if err == nil || !strings.Contains(err.Error(), "etcd is having a day") {
+				t.Fatalf("Reconcile error = %v, want the get failure", err)
+			}
+			if f.count.patches != 0 || f.count.statusUpdates != 0 {
+				t.Errorf("writes while %s was unreadable = patches %d, status %d; want none", name, f.count.patches, f.count.statusUpdates)
+			}
+			if len(f.route("r").Status.Conditions) != 0 {
+				t.Errorf("status must not be written when %s is unreadable", name)
+			}
+
+			f.count.getErr, f.count.getName = nil, ""
+			f.mustReconcile()
+			f.sameAsClean(wantFragment, wantConditions)
+		})
+	}
+}
+
+// A lost optimistic-concurrency race on the status subresource. This happens
+// in practice on every e2e run, right after a route is created.
+func TestStatusConflictIsReturnedAndRetryConverges(t *testing.T) {
+	objs := func() []client.Object {
+		return []client.Object{
+			corednsCM(corefileWired),
+			customCM(map[string]string{}),
+			zoneRoute("a", t0, 1, []string{"a.test"}, "10.0.0.1"),
+			zoneRoute("b", t0, 1, []string{"b.test"}, "10.0.0.2"),
+		}
+	}
+	wantFragment, wantConditions := clean(t, objs()...)
+
+	f := newFixture(t, objs()...)
+	f.count.statusErr = apierrors.NewConflict(
+		schema.GroupResource{Group: v1alpha1.GroupVersion.Group, Resource: "zoneroutes"},
+		"a", errors.New("the object has been modified"))
+
+	err := f.reconcile()
+	if err == nil || !apierrors.IsConflict(firstConflict(err)) {
+		t.Fatalf("Reconcile error = %v, want a conflict", err)
+	}
+	// The fragment is published before status is written, so publishing is
+	// unaffected by a status failure.
+	if got, _ := f.fragment(); got != wantFragment {
+		t.Errorf("fragment should be published even when status writes fail")
+	}
+
+	f.count.statusErr = nil
+	f.mustReconcile()
+	f.sameAsClean(wantFragment, wantConditions)
+}
+
+// firstConflict digs a conflict out of an errors.Join chain.
+func firstConflict(err error) error {
+	var joined interface{ Unwrap() []error }
+	if errors.As(err, &joined) {
+		for _, e := range joined.Unwrap() {
+			if apierrors.IsConflict(e) {
+				return e
+			}
+		}
+	}
+	if apierrors.IsConflict(err) {
+		return err
+	}
+	return err
+}
+
+// A failed publish must not leave a route claiming it was published, and a
+// later successful reconcile must repair both the fragment and the status.
+func TestPublishFailureThenRetryConverges(t *testing.T) {
+	objs := func() []client.Object {
+		return []client.Object{
+			corednsCM(corefileWired),
+			customCM(map[string]string{}),
+			zoneRoute("r", t0, 1, []string{"x.test"}, "10.0.0.1"),
+		}
+	}
+	wantFragment, wantConditions := clean(t, objs()...)
+
+	f := newFixture(t, objs()...)
+	f.count.patchErr = errors.New("forbidden")
+
+	if err := f.reconcile(); err == nil {
+		t.Fatal("Reconcile: want error, got nil")
+	}
+	f.expect("r", v1alpha1.ConditionAccepted, metav1.ConditionTrue, v1alpha1.ReasonAccepted)
+	f.expect("r", v1alpha1.ConditionPublished, metav1.ConditionFalse, v1alpha1.ReasonWriteFailed)
+	if _, ok := f.fragment(); ok {
+		t.Errorf("nothing may be published when the patch is rejected")
+	}
+
+	f.count.patchErr = nil
+	f.mustReconcile()
+	f.sameAsClean(wantFragment, wantConditions)
 }
