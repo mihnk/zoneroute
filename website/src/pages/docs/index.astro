@@ -35,13 +35,16 @@ const docs = [
       you read on GitHub are the same file.
     </p>
 
-    <ul class="cards">
-      {docs.map((doc) => (
-        <li>
-          <a href={doc.href}>
-            <h2>{doc.title}</h2>
-            <p>{doc.summary}</p>
-          </a>
+    <ul class="doc-list">
+      {docs.map((doc, i) => (
+        <li class="doc-entry">
+          <span class="doc-index" aria-hidden="true">
+            {String(i + 1).padStart(2, '0')}
+          </span>
+          <h2>
+            <a href={doc.href}>{doc.title}</a>
+          </h2>
+          <p>{doc.summary}</p>
         </li>
       ))}
     </ul>
@@ -50,54 +53,69 @@ const docs = [
 
 <style>
   .docs-index {
-    padding-block: var(--space-xl) var(--space-2xl);
+    padding-block: var(--space-2xl);
   }
 
   h1 {
-    font-size: var(--step-4);
+    font-size: var(--step-3);
+    letter-spacing: -0.02em;
   }
 
   .lede {
     max-width: var(--measure);
     margin-top: var(--space-s);
     color: var(--muted);
+    text-wrap: pretty;
   }
 
-  .cards {
-    list-style: none;
-    padding: 0;
-    margin-top: var(--space-xl);
+  .doc-list {
     display: grid;
-    gap: var(--space-s);
+    gap: var(--space-l);
+    margin-top: var(--space-xl);
+    padding: 0;
+    list-style: none;
   }
 
   @media (min-width: 52rem) {
-    .cards {
-      grid-template-columns: repeat(3, 1fr);
+    .doc-list {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-xl);
     }
   }
 
-  .cards a {
-    display: block;
-    height: 100%;
-    padding: var(--space-m);
-    border: var(--border-hairline);
-    border-radius: var(--radius);
-    text-decoration: none;
+  .doc-entry {
+    display: grid;
+    align-content: start;
+    padding-top: var(--space-s);
+    border-top: var(--border-hairline);
   }
 
-  .cards a:hover {
-    border-color: var(--accent);
+  .doc-index {
+    color: var(--muted);
+    font-size: var(--step-00);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.08em;
   }
 
-  .cards h2 {
+  .doc-entry h2 {
+    margin-top: var(--space-2xs);
     font-size: var(--step-1);
-    color: var(--accent);
+    letter-spacing: -0.01em;
   }
 
-  .cards p {
+  .doc-entry h2 a {
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+  }
+
+  .doc-entry h2 a:hover {
+    border-bottom-color: var(--text);
+  }
+
+  .doc-entry p {
     margin-top: var(--space-2xs);
     color: var(--muted);
-    font-size: var(--step--1);
+    font-size: var(--step-00);
+    text-wrap: pretty;
   }
 </style>
