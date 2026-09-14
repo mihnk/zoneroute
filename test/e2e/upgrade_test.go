@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -158,16 +159,26 @@ func waitControllerOn(t *testing.T, image string, gone map[types.UID]bool) corev
 // disagree about which manifests are "current".
 func applyWorkingTree(t *testing.T) {
 	t.Helper()
-	render := os.Getenv("ZONEROUTE_UPGRADE_APPLY")
-	if render == "" {
+	renderCmd := os.Getenv("ZONEROUTE_UPGRADE_APPLY")
+	if renderCmd == "" {
 		t.Fatal("ZONEROUTE_UPGRADE_APPLY is not set; run this through hack/upgrade-e2e.sh")
 	}
 
-	manifests, err := exec.Command("sh", "-c", render).Output()
+	// `go test` runs in the package directory, and the render command is
+	// written relative to the repository root, where hack/upgrade-e2e.sh
+	// runs. Point it back at the root, and keep stderr: a failure here used
+	// to report only an exit status.
+	render := exec.Command("sh", "-c", renderCmd)
+	render.Dir = repoRoot(t)
+	var stderr bytes.Buffer
+	render.Stderr = &stderr
+	manifests, err := render.Output()
 	if err != nil {
-		t.Fatalf("rendering the working-tree manifests (%s): %v", render, err)
+		t.Fatalf("rendering the working-tree manifests (%s) in %s: %v\n%s",
+			renderCmd, render.Dir, err, stderr.String())
 	}
 
+	// The manifests arrive on stdin, so this one needs no working directory.
 	apply := exec.Command("kubectl", "apply", "-f", "-")
 	apply.Stdin = bytes.NewReader(manifests)
 	out, err := apply.CombinedOutput()
@@ -182,6 +193,16 @@ func applyWorkingTree(t *testing.T) {
 			t.Errorf("the upgrade deleted a resource: %s", line)
 		}
 	}
+}
+
+// repoRoot is the repository root, two levels above this package.
+func repoRoot(t *testing.T) string {
+	t.Helper()
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("resolving the working directory: %v", err)
+	}
+	return filepath.Join(wd, "..", "..")
 }
 
 func TestUpgradeFromV010(t *testing.T) {
