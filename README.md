@@ -10,21 +10,25 @@ cluster's Corefile or the CoreDNS Deployment; CoreDNS picks the fragment up
 through a one-time `import custom/*.server` wiring that the administrator
 establishes once.
 
-**Status:** pre-release, on the way to v0.1. The controller, RBAC and
-install manifests are complete and exercised end to end on kind (Kubernetes
-1.31, stock kubeadm CoreDNS). **No container image is published yet**: the
-committed manifest references `ghcr.io/mihnk/zoneroute:dev`, which does not
-exist until the first release. Until then, build the image yourself and
-point the manifest at it — see [Image](docs/install.md#image).
+**Status:** v0.1.0 is released. Each release publishes an installation
+manifest whose controller image is pinned by digest, and
+`ghcr.io/mihnk/zoneroute` for `linux/amd64` and `linux/arm64` with an SBOM
+and build provenance. The integration is exercised end to end on every pull
+request against real CoreDNS on kind (Kubernetes 1.31, stock kubeadm layout).
+
+The `install.yaml` committed to this repository is the **development**
+manifest: it references `ghcr.io/mihnk/zoneroute:dev`, a naming convention
+rather than a published image, and is meant for building the controller
+yourself — see [Image](docs/install.md#from-a-checkout).
 
 ## Quick start
 
-Read the image note above first; step 1 will not pull an image on its own
-yet. Full details, privileges and the kustomize path: [docs/install.md](docs/install.md).
+Full details, required privileges and the kustomize path:
+[docs/install.md](docs/install.md).
 
 ```sh
 # 1. CRD, namespace, RBAC and controller Deployment
-kubectl apply -f install.yaml
+kubectl apply -f https://github.com/mihnk/zoneroute/releases/latest/download/install.yaml
 
 # 2. The integration ConfigMap. Never delete or replace an existing one.
 kubectl -n kube-system get configmap coredns-custom \
