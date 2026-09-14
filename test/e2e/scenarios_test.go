@@ -333,6 +333,89 @@ func TestNonDefaultPort(t *testing.T) {
 	waitDNS(t, "hello.port.test.", answerPort)
 }
 
+// The suite runs CoreDNS with one replica for speed, but the kubeadm default
+// — and therefore the layout this project validates — is two, and each
+// replica reloads on its own schedule. A fragment that reaches only one of
+// them is the regression this scenario exists to catch: it was seen for real
+// during #8, where UDP hit a reloaded replica and TCP hit one that had not
+// caught up.
+//
+// The scenario restores everything it changes and verifies the restoration
+// itself, so its correctness does not depend on running before any other
+// test.
+func TestMultiReplicaConvergence(t *testing.T) {
+	const want = 2
+	before := coreDNSReplicas(t)
+
+	// Cleanups run last-in-first-out, so these are registered in reverse of
+	// the order they must execute:
+	//
+	//   1. the route is deleted      (registered last, by createRoute)
+	//   2. the replica count is restored
+	//   3. the restoration is verified
+	//
+	// Registering the verification first is what makes it run after the
+	// restore, and registering the restore before createRoute is what keeps
+	// the route from outliving the replicas it was tested against.
+	t.Cleanup(func() {
+		ips := waitCoreDNSReplicas(t, before)
+		if got := coreDNSReplicas(t); got != before {
+			t.Errorf("CoreDNS replicas = %d after cleanup, want the original %d", got, before)
+		}
+		if len(ips) != int(before) {
+			t.Errorf("%d usable CoreDNS pods after cleanup, want %d", len(ips), before)
+		}
+	})
+	t.Cleanup(func() {
+		if coreDNSReplicas(t) != before {
+			setCoreDNSReplicas(t, before)
+		}
+	})
+
+	ips := setCoreDNSReplicas(t, want)
+	if len(ips) != want {
+		t.Fatalf("got %d usable CoreDNS pod IPs (%v), want %d", len(ips), ips, want)
+	}
+	if ips[0] == ips[1] {
+		t.Fatalf("both CoreDNS pods report the same IP: %v", ips)
+	}
+	t.Logf("CoreDNS replicas under test: %v", ips)
+
+	zr := createRoute(t, "multireplica", []string{zone}, upstream{upstreamA, 53})
+	waitCondition(t, "multireplica", v1alpha1.ConditionAccepted, metav1.ConditionTrue, v1alpha1.ReasonAccepted)
+	waitCondition(t, "multireplica", v1alpha1.ConditionPublished, metav1.ConditionTrue, v1alpha1.ReasonPublished)
+
+	// The fragment must be right before DNS is worth asking about.
+	waitFragment(t, expectFragment(t, zr))
+
+	// Every replica, over both transports. waitDNSOver queries each pod
+	// directly as well as the Service, so an answer from one pod is never
+	// enough to satisfy it.
+	waitDNSOver(t, helloName, answerA, false)
+	waitDNSOver(t, helloName, answerA, true)
+
+	// State the per-replica result explicitly, so a future change to the
+	// helpers cannot quietly reduce this to a Service-only assertion.
+	for _, tcp := range []bool{false, true} {
+		proto := "udp"
+		if tcp {
+			proto = "tcp"
+		}
+		answers := resolveEverywhere(t, helloName, tcp)
+		for _, ip := range ips {
+			got, asked := answers[ip]
+			if !asked {
+				t.Errorf("%s: replica %s was not queried (answers: %v)", proto, ip, answers)
+				continue
+			}
+			if got != answerA {
+				t.Errorf("%s: replica %s answered %q, want %s (answers: %v)", proto, ip, got, answerA, answers)
+			}
+		}
+		t.Logf("%s answers per replica: %v", proto, answers)
+	}
+}
+
 // The suite leaves CoreDNS as it found it after wiring.
 func TestSuiteLeavesCoreDNSUntouched(t *testing.T) {
 	if got, want := sha256.Sum256([]byte(corefile(t))), sha256.Sum256([]byte(wiredCorefile)); got != want {
