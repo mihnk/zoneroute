@@ -1,0 +1,46 @@
+---
+import { getCollection, render } from 'astro:content';
+import Doc from '../../layouts/Doc.astro';
+
+export async function getStaticPaths() {
+  const docs = await getCollection('docs');
+  return docs.map((doc) => ({ params: { slug: doc.id }, props: { doc } }));
+}
+
+const { doc } = Astro.props;
+const { Content, headings } = await render(doc);
+
+/** Page titles and descriptions for the three canonical documents. */
+const meta: Record<string, { title: string; description: string }> = {
+  install: {
+    title: 'Installation — ZoneRoute',
+    description:
+      'Install the ZoneRoute controller, create the integration ConfigMap, and verify the Accepted and Published conditions.',
+  },
+  'coredns-wiring': {
+    title: 'CoreDNS wiring — ZoneRoute',
+    description:
+      'The ZoneRoute integration contract for CoreDNS: the top-level import, the read-only mount, and what each platform provides.',
+  },
+  troubleshooting: {
+    title: 'Troubleshooting — ZoneRoute',
+    description:
+      'What each Accepted and Published reason means, and how to get from "the name does not resolve" to the component responsible.',
+  },
+};
+
+const { title, description } = meta[doc.id] ?? {
+  title: `${doc.id} — ZoneRoute`,
+  description: 'ZoneRoute documentation.',
+};
+---
+
+<Doc
+  title={title}
+  description={description}
+  path={`docs/${doc.id}`}
+  source={`docs/${doc.id}.md`}
+  headings={headings}
+>
+  <Content />
+</Doc>

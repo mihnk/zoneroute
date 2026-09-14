@@ -1,0 +1,601 @@
+---
+import { Code } from 'astro:components';
+import Base from '../layouts/Base.astro';
+import example from '../data/example.yaml?raw';
+
+const repo = 'https://github.com/mihnk/zoneroute';
+
+const reasons = [
+  {
+    term: 'Declarative Kubernetes API',
+    detail:
+      'A ZoneRoute names the zones and an ordered list of upstream resolvers. The API server validates addresses and rejects duplicate zones before the controller ever sees the object.',
+  },
+  {
+    term: 'Deterministic rendering',
+    detail:
+      'The same set of routes always renders the same bytes, in the same order, whatever order the objects arrive in.',
+  },
+  {
+    term: 'Deterministic ownership',
+    detail:
+      'When two routes claim one zone, the older one wins, and equal timestamps fall back to name order. The loser is told which route owns the zone and why.',
+  },
+  {
+    term: 'Zones CoreDNS already serves are left alone',
+    detail:
+      'A zone already served by the Corefile or another *.server file is not taken over. Parent and child zones are separate claims, so company.local and eu.company.local can belong to different routes.',
+  },
+  {
+    term: 'Least-privilege controller',
+    detail:
+      'The controller may patch exactly one ConfigMap. It cannot create ConfigMaps, cannot touch the Corefile, and has no access to Secrets, Pods or Deployments.',
+  },
+];
+
+const guarantees = [
+  'Functional end-to-end tests against real CoreDNS on Kubernetes, on every pull request',
+  'Multi-replica CoreDNS convergence',
+  'Least-privilege RBAC verified in-cluster',
+  'Deterministic rendering, independent of input order',
+  'Controller restart and idempotency coverage',
+  'linux/amd64 and linux/arm64 images',
+  'Installation manifest pinned to the image digest',
+  'SBOM and build provenance attached to every release',
+];
+
+const owns = [
+  'Watches ZoneRoute resources',
+  'Reads kube-system/coredns',
+  'Reads and watches kube-system/coredns-custom',
+  'Writes only data["zoneroute.server"]',
+];
+
+const doesNot = [
+  'Does not create coredns-custom',
+  'Does not edit the Corefile',
+  'Does not edit the CoreDNS Deployment',
+  'Does not verify that upstreams are reachable',
+];
+
+const administrator = [
+  'The CoreDNS Deployment',
+  'The Corefile integration',
+  'The lifecycle of coredns-custom',
+  'Every other key in coredns-custom',
+  'Network connectivity to the upstream resolvers',
+];
+
+const compatibility = [
+  {
+    env: 'kind and kubeadm-style CoreDNS',
+    status: 'Validated',
+    note: 'exercised by the end-to-end suite on every pull request',
+  },
+  {
+    env: 'AKS',
+    status: 'Design-compatible',
+    note: 'the published layout satisfies the contract; not validated here',
+  },
+  {
+    env: 'Gardener',
+    status: 'Design-compatible',
+    note: 'the published layout satisfies the contract; not validated here',
+  },
+  {
+    env: 'EKS with the managed add-on',
+    status: 'Unverified',
+    note: 'the add-on owns the Corefile and the Deployment',
+  },
+  {
+    env: 'GKE with kube-dns',
+    status: 'Unsupported',
+    note: 'no CoreDNS, so there is no integration point',
+  },
+];
+---
+
+<Base
+  title="ZoneRoute — conditional DNS forwarding for CoreDNS"
+  description="ZoneRoute is a Kubernetes-native controller for declarative conditional DNS forwarding with CoreDNS."
+  path=""
+>
+  <section class="hero wrap">
+    <div class="hero-copy">
+      <h1>Conditional DNS forwarding, the Kubernetes way.</h1>
+      <p class="lede">
+        Define DNS forwarding routes as Kubernetes resources. ZoneRoute renders them for CoreDNS and
+        publishes them into a single ConfigMap key — without taking ownership of your CoreDNS
+        deployment.
+      </p>
+      <p class="cta">
+        <a class="button" href="/docs/install/">
+          Get started
+        </a>
+        <a class="button-quiet" href={repo} rel="noopener noreferrer">
+          View on GitHub
+        </a>
+      </p>
+    </div>
+
+    <figure class="hero-example">
+      <figcaption>A ZoneRoute</figcaption>
+      <Code code={example} lang="yaml" themes={{ light: 'github-light', dark: 'github-dark' }} />
+    </figure>
+  </section>
+
+  <section class="band wrap" aria-labelledby="why">
+    <h2 id="why">Why ZoneRoute</h2>
+    <ol class="reasons">
+      {reasons.map(({ term, detail }, i) => (
+        <li>
+          <span class="index" aria-hidden="true">
+            {String(i + 1).padStart(2, '0')}
+          </span>
+          <h3>{term}</h3>
+          <p>{detail}</p>
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <section class="band wrap" aria-labelledby="how">
+    <h2 id="how">How it works</h2>
+    <p class="section-lede">
+      ZoneRoute writes one key. CoreDNS picks it up through an import the administrator establishes
+      once, and nothing else in the cluster changes.
+    </p>
+
+    <ol class="flow" aria-label="From a ZoneRoute resource to an upstream resolver">
+      <li>
+        <strong>ZoneRoute</strong>
+        <span>a Kubernetes resource</span>
+      </li>
+      <li>
+        <strong>Controller</strong>
+        <span>resolves conflicts, renders the fragment</span>
+      </li>
+      <li>
+        <strong>kube-system/coredns-custom</strong>
+        <span>data["zoneroute.server"]</span>
+      </li>
+      <li>
+        <strong>CoreDNS</strong>
+        <span>imports custom/*.server</span>
+      </li>
+      <li>
+        <strong>Upstream resolver</strong>
+        <span>answers for the zone</span>
+      </li>
+    </ol>
+
+    <div class="ownership">
+      <div>
+        <h3>ZoneRoute owns</h3>
+        <ul class="marked">
+          {owns.map((item) => (
+            <li data-mark="writes">{item}</li>
+          ))}
+          {doesNot.map((item) => (
+            <li data-mark="never">{item}</li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <h3>You own</h3>
+        <ul class="marked">
+          {administrator.map((item) => (
+            <li data-mark="yours">{item}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="band wrap" aria-labelledby="guarantees">
+    <h2 id="guarantees">Built to be boring in production</h2>
+    <p class="section-lede">
+      What the repository verifies before a release is cut. Nothing here is aspirational.
+    </p>
+    <ul class="guarantees">
+      {guarantees.map((item) => (
+        <li>{item}</li>
+      ))}
+    </ul>
+  </section>
+
+  <section class="band wrap" aria-labelledby="quickstart">
+    <h2 id="quickstart">Quick start</h2>
+    <Code
+      code={`kubectl apply -f https://github.com/mihnk/zoneroute/releases/latest/download/install.yaml`}
+      lang="sh"
+      themes={{ light: 'github-light', dark: 'github-dark' }}
+    />
+    <p class="note">
+      That installs the CRD, the namespace, the RBAC and the controller. CoreDNS wiring is a
+      separate, one-time step — the controller never edits CoreDNS itself. See
+      <a href="/docs/coredns-wiring/">CoreDNS wiring</a>, then
+      <a href="/docs/install/">Installation</a> for the rest.
+    </p>
+
+    <div class="status">
+      <h3>Accepted and Published</h3>
+      <dl>
+        <dt>Accepted</dt>
+        <dd>The route is logically accepted: valid, not reserved, and in conflict with nothing.</dd>
+        <dt>Published</dt>
+        <dd>
+          The fragment was written to the integration point and the expected import was found in the
+          Corefile.
+        </dd>
+      </dl>
+      <p class="caveat">
+        <strong>Published=True does not mean DNS is proven healthy end to end.</strong> It does not
+        prove CoreDNS reloaded, that the mount is healthy, or that an upstream answers. Those are
+        verified by asking DNS — see <a href="/docs/troubleshooting/">Troubleshooting</a>.
+      </p>
+    </div>
+  </section>
+
+  <section class="band wrap" aria-labelledby="compatibility">
+    <h2 id="compatibility">Compatibility</h2>
+    <p class="section-lede">
+      Kubernetes 1.31 or newer, for the CEL IP library the CRD validates addresses with. CoreDNS
+      1.7.0 or newer, for the reload plugin that notices changes in imported files.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Environment</th>
+          <th scope="col">Status</th>
+          <th scope="col">Why</th>
+        </tr>
+      </thead>
+      <tbody>
+        {compatibility.map(({ env, status, note }) => (
+          <tr>
+            <th scope="row">{env}</th>
+            <td>
+              <span class="status-tag">{status}</span>
+            </td>
+            <td>{note}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    <p class="note">
+      <em>Validated</em> means the repository contains a repeatable check.{' '}
+      <em>Design-compatible</em>
+      means the platform's published CoreDNS layout appears to satisfy the contract, but nothing
+      here verifies it. <em>Unverified</em> and <em>unsupported</em> mean what they say.
+    </p>
+  </section>
+
+  <section class="band wrap closing" aria-labelledby="read">
+    <h2 id="read">Read the documentation</h2>
+    <p>
+      Installation, the CoreDNS integration contract, and a reason-by-reason troubleshooting guide.
+    </p>
+    <p class="cta">
+      <a class="button" href="/docs/">
+        Documentation
+      </a>
+      <a class="button-quiet" href={`${repo}/releases`} rel="noopener noreferrer">
+        Releases
+      </a>
+    </p>
+  </section>
+</Base>
+
+<style>
+  h2 {
+    font-size: var(--step-3);
+  }
+
+  .section-lede,
+  .note {
+    max-width: var(--measure);
+    color: var(--muted);
+    margin-top: var(--space-s);
+  }
+
+  .band {
+    padding-block: var(--space-2xl);
+    border-top: var(--border-hairline);
+  }
+
+  /* Hero ------------------------------------------------------------------ */
+
+  .hero {
+    display: grid;
+    gap: var(--space-xl);
+    padding-block: var(--space-2xl);
+  }
+
+  @media (min-width: 60rem) {
+    .hero {
+      grid-template-columns: 1fr minmax(0, 26rem);
+      align-items: center;
+    }
+  }
+
+  .hero h1 {
+    font-size: var(--step-4);
+  }
+
+  .hero .lede {
+    max-width: var(--measure);
+    margin-top: var(--space-m);
+    font-size: var(--step-1);
+    color: var(--muted);
+  }
+
+  .cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-s);
+    margin-top: var(--space-l);
+  }
+
+  .button,
+  .button-quiet {
+    display: inline-block;
+    padding: 0.6rem 1.1rem;
+    border-radius: var(--radius);
+    text-decoration: none;
+    font-size: var(--step--1);
+    font-weight: 500;
+  }
+
+  .button {
+    background-color: var(--accent);
+    color: var(--accent-contrast);
+  }
+
+  .button-quiet {
+    border: var(--border-hairline);
+  }
+
+  .button-quiet:hover {
+    border-color: var(--accent);
+  }
+
+  .hero-example figcaption {
+    font-size: var(--step--1);
+    color: var(--muted);
+    margin-bottom: var(--space-2xs);
+  }
+
+  /* Why ------------------------------------------------------------------- */
+
+  .reasons {
+    list-style: none;
+    padding: 0;
+    margin-top: var(--space-l);
+    display: grid;
+    gap: var(--space-l);
+  }
+
+  @media (min-width: 52rem) {
+    .reasons {
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-l) var(--space-xl);
+    }
+  }
+
+  .reasons .index {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    color: var(--accent);
+  }
+
+  .reasons h3 {
+    font-size: var(--step-1);
+    margin-top: var(--space-2xs);
+  }
+
+  .reasons p {
+    margin-top: var(--space-2xs);
+    color: var(--muted);
+  }
+
+  /* Flow ------------------------------------------------------------------ */
+
+  .flow {
+    list-style: none;
+    padding: 0;
+    margin-top: var(--space-l);
+    display: grid;
+    gap: var(--space-2xs);
+  }
+
+  .flow li {
+    position: relative;
+    padding: var(--space-s) var(--space-m);
+    border: var(--border-hairline);
+    border-radius: var(--radius);
+    background-color: var(--surface);
+  }
+
+  /* The arrow is decorative; the list order carries the meaning. */
+  .flow li + li::before {
+    content: '↓';
+    position: absolute;
+    top: calc(var(--space-2xs) * -1 - 0.7em);
+    left: var(--space-m);
+    color: var(--muted);
+    font-size: var(--step--1);
+  }
+
+  .flow strong {
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+  }
+
+  .flow span {
+    display: block;
+    color: var(--muted);
+    font-size: var(--step--1);
+  }
+
+  /* Ownership ------------------------------------------------------------- */
+
+  .ownership {
+    margin-top: var(--space-xl);
+    display: grid;
+    gap: var(--space-l);
+  }
+
+  @media (min-width: 52rem) {
+    .ownership {
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-xl);
+    }
+  }
+
+  .ownership h3 {
+    font-size: var(--step-1);
+    padding-bottom: var(--space-2xs);
+    border-bottom: var(--border-hairline);
+  }
+
+  .marked {
+    list-style: none;
+    padding: 0;
+    margin-top: var(--space-s);
+    display: grid;
+    gap: var(--space-2xs);
+    font-size: var(--step--1);
+  }
+
+  /* The marker is a word, not a colour, so the distinction survives
+     monochrome printing and colour-blindness. */
+  .marked li::before {
+    content: attr(data-mark);
+    display: inline-block;
+    min-width: 4.5rem;
+    margin-right: var(--space-xs);
+    font-family: var(--font-mono);
+    font-size: 0.8em;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+  }
+
+  .marked li[data-mark='writes']::before {
+    color: var(--accent);
+  }
+
+  /* Guarantees ------------------------------------------------------------ */
+
+  .guarantees {
+    list-style: none;
+    padding: 0;
+    margin-top: var(--space-l);
+    display: grid;
+    gap: var(--space-2xs);
+  }
+
+  @media (min-width: 52rem) {
+    .guarantees {
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-2xs) var(--space-xl);
+    }
+  }
+
+  .guarantees li {
+    padding-left: 1.4rem;
+    position: relative;
+  }
+
+  .guarantees li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+  }
+
+  /* Quick start ----------------------------------------------------------- */
+
+  .status {
+    margin-top: var(--space-xl);
+    padding: var(--space-m);
+    border: var(--border-hairline);
+    border-radius: var(--radius);
+  }
+
+  .status h3 {
+    font-size: var(--step-1);
+  }
+
+  .status dl {
+    margin-top: var(--space-s);
+    display: grid;
+    gap: var(--space-2xs);
+  }
+
+  @media (min-width: 40rem) {
+    .status dl {
+      grid-template-columns: 8rem minmax(0, 1fr);
+      gap: var(--space-2xs) var(--space-s);
+    }
+  }
+
+  .status dt {
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    color: var(--accent);
+  }
+
+  .status dd {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--step--1);
+  }
+
+  .caveat {
+    margin-top: var(--space-s);
+    padding-top: var(--space-s);
+    border-top: var(--border-hairline);
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+
+  /* Compatibility --------------------------------------------------------- */
+
+  table {
+    margin-top: var(--space-l);
+    width: 100%;
+    display: block;
+    overflow-x: auto;
+    border-collapse: collapse;
+    font-size: var(--step--1);
+  }
+
+  th,
+  td {
+    border: var(--border-hairline);
+    padding: var(--space-2xs) var(--space-xs);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  thead th {
+    background-color: var(--surface);
+  }
+
+  .status-tag {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    white-space: nowrap;
+  }
+
+  /* Closing --------------------------------------------------------------- */
+
+  .closing p {
+    max-width: var(--measure);
+    margin-top: var(--space-s);
+    color: var(--muted);
+  }
+</style>

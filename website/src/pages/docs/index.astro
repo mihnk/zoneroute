@@ -1,0 +1,103 @@
+---
+import Base from '../../layouts/Base.astro';
+
+const docs = [
+  {
+    href: '/docs/install/',
+    title: 'Installation',
+    summary:
+      'Prerequisites and the privileges an install actually needs, the release and kustomize paths, the integration ConfigMap, your first ZoneRoute, and how to verify it.',
+  },
+  {
+    href: '/docs/coredns-wiring/',
+    title: 'CoreDNS wiring',
+    summary:
+      'The seven points of the integration contract, the kubeadm and kind steps that satisfy them, and what is known about managed platforms.',
+  },
+  {
+    href: '/docs/troubleshooting/',
+    title: 'Troubleshooting',
+    summary:
+      'Every Accepted and Published reason with its cause and remedy, plus the path from a name that does not resolve to the component responsible.',
+  },
+];
+---
+
+<Base
+  title="Documentation — ZoneRoute"
+  description="Installation, CoreDNS wiring and troubleshooting for ZoneRoute, rendered from the repository's canonical Markdown."
+  path="docs"
+>
+  <div class="wrap docs-index">
+    <h1>Documentation</h1>
+    <p class="lede">
+      These pages are rendered from the Markdown in the repository, so what you read here and what
+      you read on GitHub are the same file.
+    </p>
+
+    <ul class="cards">
+      {docs.map((doc) => (
+        <li>
+          <a href={doc.href}>
+            <h2>{doc.title}</h2>
+            <p>{doc.summary}</p>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </div>
+</Base>
+
+<style>
+  .docs-index {
+    padding-block: var(--space-xl) var(--space-2xl);
+  }
+
+  h1 {
+    font-size: var(--step-4);
+  }
+
+  .lede {
+    max-width: var(--measure);
+    margin-top: var(--space-s);
+    color: var(--muted);
+  }
+
+  .cards {
+    list-style: none;
+    padding: 0;
+    margin-top: var(--space-xl);
+    display: grid;
+    gap: var(--space-s);
+  }
+
+  @media (min-width: 52rem) {
+    .cards {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .cards a {
+    display: block;
+    height: 100%;
+    padding: var(--space-m);
+    border: var(--border-hairline);
+    border-radius: var(--radius);
+    text-decoration: none;
+  }
+
+  .cards a:hover {
+    border-color: var(--accent);
+  }
+
+  .cards h2 {
+    font-size: var(--step-1);
+    color: var(--accent);
+  }
+
+  .cards p {
+    margin-top: var(--space-2xs);
+    color: var(--muted);
+    font-size: var(--step--1);
+  }
+</style>
