@@ -8,28 +8,32 @@ name: compatibility
 # A failure here is a compatibility report. It does not change the supported
 # floor, and it does not gate pull requests.
 on:
+  # On a pull request only when the compatibility machinery itself changes,
+  # so a change to the lane validates itself while ordinary pull requests
+  # keep waiting for one cluster, not two.
+  pull_request:
+    paths:
+      - 'Makefile'
+      - 'hack/**'
+      - 'test/e2e/**'
+      - '.github/workflows/compatibility.yml'
+  push:
+    branches: [main]
   schedule:
     # Mondays, 06:00 UTC — one run a week, early enough to be triaged.
     - cron: '0 6 * * 1'
   workflow_dispatch:
-  push:
-    branches: [main]
-    # Only when the pins themselves change, so an ordinary merge does not
-    # start a second cluster.
-    paths:
-      - 'Makefile'
-      - '.github/workflows/compatibility.yml'
 
 permissions: {}
 
 concurrency:
-  group: compatibility-${{ github.ref }}
-  cancel-in-progress: false
+  group: compatibility-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   kubernetes-newer:
     # The version is in the name, so a failure says which Kubernetes broke.
-    name: kubernetes 1.34
+    name: kubernetes 1.36
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

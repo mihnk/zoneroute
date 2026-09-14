@@ -3,24 +3,29 @@
 CONTROLLER_GEN := go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.21.0
 KUSTOMIZE      := go run sigs.k8s.io/kustomize/kustomize/v5@v5.8.1
 
-# Two Kubernetes lanes, each pinned by tag and digest. A node image is only
-# published by one kind release, so the kind version travels with it.
+# Two Kubernetes lanes, each pinned by tag and digest, and each paired with
+# the kind release that published its node image.
 #
-#   minimum — the supported floor, and the authoritative target. Every
-#             pull request, the release workflow and the local `make`
-#             targets use it.
-#   newer   — forward-compatibility only, run on a weekly cadence by
-#             .github/workflows/compatibility.yml. It does not move the
-#             floor, and a failure there is a compatibility report, not a
+#   minimum — the supported floor and the authoritative target. Every pull
+#             request, the release workflow and the local `make` targets use
+#             it. The pairing below is the one already validated, and it is
+#             left alone: nothing about a newer lane is a reason to disturb
+#             the baseline.
+#   newer   — forward compatibility only, on the current kind release that
+#             published the selected node image. It does not move the floor,
+#             and a failure there is a compatibility report rather than a
 #             change to what ZoneRoute supports.
 #
-# Bumping a lane means changing the two values that belong to it, here and
+# Keeping each lane on a known kind/node pairing is why the two differ; a
+# lane is bumped by changing the two values that belong to it, here and
 # nowhere else.
 KIND_MINIMUM            := go run sigs.k8s.io/kind@v0.31.0
 KIND_NODE_IMAGE_MINIMUM := kindest/node:v1.31.14@sha256:6f86cf509dbb42767b6e79debc3f2c32e4ee01386f0489b3b2be24b0a55aac2b
 
+# 1.36 is the mature, actively supported line. 1.34 is already in maintenance
+# and 1.37 is too fresh to pin a weekly lane to.
 KIND_NEWER            := go run sigs.k8s.io/kind@v0.33.0
-KIND_NODE_IMAGE_NEWER := kindest/node:v1.34.11@sha256:44e222ee2132dab25ff87301682f89eb82c7880ea3a1bf543bfe9708fd08d67d
+KIND_NODE_IMAGE_NEWER := kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed
 
 # The lane the cluster targets use. Override both together to test another
 # Kubernetes version:
