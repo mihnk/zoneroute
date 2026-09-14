@@ -48,7 +48,7 @@ Before tagging:
 Locally, without pushing anything:
 
 ```sh
-VERSION=v0.1.0 make release-check
+VERSION=v0.2.0 make release-check
 ```
 
 This checks the version syntax, renders the manifest, the checksums and the
@@ -60,9 +60,9 @@ digest.
 
 ```sh
 git switch main && git pull
-VERSION=v0.1.0 make release-check
-git tag -a v0.1.0 -m 'ZoneRoute v0.1.0'
-git push origin v0.1.0
+VERSION=v0.2.0 make release-check
+git tag -a v0.2.0 -m 'ZoneRoute v0.2.0'
+git push origin v0.2.0
 ```
 
 Then watch the workflow. The jobs run in this order, and each one is a gate
@@ -129,7 +129,7 @@ have pulled it by digest.
    package is readable without authentication:
 
    ```sh
-   docker pull ghcr.io/mihnk/zoneroute:v0.1.0   # from a logged-out client
+   docker pull ghcr.io/mihnk/zoneroute:v0.2.0   # from a logged-out client
    ```
 
    If it is not public, set it in the package settings

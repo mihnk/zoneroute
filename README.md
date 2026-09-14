@@ -10,7 +10,7 @@ cluster's Corefile or the CoreDNS Deployment; CoreDNS picks the fragment up
 through a one-time `import custom/*.server` wiring that the administrator
 establishes once.
 
-**Status:** v0.1.0 is released. Each release publishes an installation
+**Status:** v0.2.0 is released. Each release publishes an installation
 manifest whose controller image is pinned by digest, and
 `ghcr.io/mihnk/zoneroute` for `linux/amd64` and `linux/arm64` with an SBOM
 and build provenance. The integration is exercised end to end on every pull
@@ -103,7 +103,7 @@ make verify-crd       # CRD schema and CEL rules on a kind Kubernetes 1.31 clust
 make verify-install   # install.yaml applies cleanly on a kind Kubernetes 1.31 cluster; needs docker
 make test-e2e         # functional suite against real CoreDNS on kind; needs docker
 
-VERSION=v0.1.0 make release-check   # render the release artifacts locally; publishes nothing
+VERSION=v0.2.0 make release-check   # render the release artifacts locally; publishes nothing
 ```
 
 Cutting a release: [docs/release.md](docs/release.md).

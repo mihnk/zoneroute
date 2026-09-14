@@ -22,7 +22,7 @@ Sequence:
 | Kubernetes ≥ 1.31 | The CRD validates upstream addresses with the CEL IP library (`isIP`, `ip.isCanonical`), available from 1.31. Older API servers reject the CRD. |
 | CoreDNS ≥ 1.7.0 with the `reload` plugin | From 1.7.0 `reload` hashes the parsed Corefile, imports included, so a change to `coredns-custom` is picked up without restarting CoreDNS. The kubeadm default Corefile enables `reload`. |
 | CoreDNS configured from `kube-system/coredns` | The controller reads the `Corefile` key of that ConfigMap to detect wiring and existing zones. If the ConfigMap or the key is missing it publishes nothing, deliberately. |
-| CoreDNS listening on port 53 | ZoneRoute v0.1 assumes the default DNS listener. A CoreDNS started with a non-default `-dns.port` is outside the v0.1 integration contract. |
+| CoreDNS listening on port 53 | ZoneRoute assumes the default DNS listener. A CoreDNS started with a non-default `-dns.port` is outside the integration contract. |
 | `kubectl` | Any version compatible with your cluster. |
 
 Installation privileges — a cluster-admin satisfies all of them, but the
@@ -78,7 +78,7 @@ tag someone could move:
 kubectl apply -f https://github.com/mihnk/zoneroute/releases/latest/download/install.yaml
 
 # or an exact version
-kubectl apply -f https://github.com/mihnk/zoneroute/releases/download/v0.1.0/install.yaml
+kubectl apply -f https://github.com/mihnk/zoneroute/releases/download/v0.2.0/install.yaml
 ```
 
 This installs everything in [What gets installed](#what-gets-installed). It
@@ -258,14 +258,14 @@ What the fields mean:
   are rejected by the API server.
 - **Order is significant.** The first upstream is tried first; the next one
   is used when it fails. This is CoreDNS `forward` with `policy sequential`,
-  the only strategy in v0.1.
+  the only strategy ZoneRoute generates.
 - **`port` defaults to 53.**
 - **Parent and child zones may coexist**, in one route or across routes:
   `company.local` and `eu.company.local` can point to different upstreams and
   CoreDNS picks the longest match.
 - **Two routes may not claim the same zone.** The older route wins; the newer
   one reports `Accepted=False` / `ZoneConflict`.
-- **Reverse zones are outside v0.1.** `in-addr.arpa`, `ip6.arpa` and their
+- **Reverse zones are outside the contract.** `in-addr.arpa`, `ip6.arpa` and their
   subzones are rejected by the API server, as is `localhost`.
 - **The cluster domain and its descendants are reserved** and rejected with
   `ReservedZone`; see [Cluster domain](#cluster-domain).

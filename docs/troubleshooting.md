@@ -214,7 +214,7 @@ breaks service discovery for the whole cluster.
 ### ZoneOwnedByCoreDNS
 
 **Means.** The visible CoreDNS configuration already serves the same
-listener. In v0.1 a listener's identity is **transport + canonical zone +
+listener. A listener's identity is **transport + canonical zone +
 port**, and a ZoneRoute always generates `("dns", <canonical zone>, 53)`.
 So an existing `dns` listener for `example.com` on port 53 conflicts; the
 same zone on a different port, or under a different transport such as `tls`
