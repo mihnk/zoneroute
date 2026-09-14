@@ -1,0 +1,11 @@
+apiVersion: dns.mihnk.org/v1alpha1
+kind: ZoneRoute
+metadata:
+  name: corporate
+spec:
+  zones:
+    - company.local
+  upstreams:
+    - address: 10.10.10.53
+    - address: 10.10.10.54
+      port: 5353

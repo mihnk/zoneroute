@@ -1,0 +1,108 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+  /** Path without the leading slash: '' for the homepage, 'docs' for /docs. */
+  path: string;
+}
+
+const { title, description, path } = Astro.props;
+const canonical = new URL(path ? `/${path}/` : '/', Astro.site);
+const repo = 'https://github.com/mihnk/zoneroute';
+const current = Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Applies a stored theme before first paint; with no stored choice the
+         CSS `prefers-color-scheme` rules decide, so the system theme wins. -->
+    <script is:inline>
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ZoneRoute" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+
+    <meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121315" media="(prefers-color-scheme: dark)" />
+  </head>
+
+  <body>
+    <div class="page">
+      <a class="skip-link" href="#main">
+        Skip to content
+      </a>
+
+      <header class="masthead">
+        <div class="wrap masthead-inner">
+          <a class="wordmark" href="/">
+            <span class="zone">Zone</span>Route
+          </a>
+          <nav class="nav" aria-label="Main">
+            <a href="/docs/" aria-current={current.startsWith('/docs') ? 'page' : undefined}>
+              Docs
+            </a>
+            <a href={repo} rel="noopener noreferrer">
+              GitHub
+            </a>
+          </nav>
+        </div>
+      </header>
+
+      <main id="main" class="main">
+        <slot />
+      </main>
+
+      <footer class="footer">
+        <div class="wrap footer-inner">
+          <ul>
+            <li>
+              <a href={repo} rel="noopener noreferrer">
+                GitHub
+              </a>
+            </li>
+            <li>
+              <a href={`${repo}/releases`} rel="noopener noreferrer">
+                Releases
+              </a>
+            </li>
+            <li>
+              <a href={`${repo}/blob/main/LICENSE`} rel="noopener noreferrer">
+                Apache-2.0
+              </a>
+            </li>
+            <li>
+              <a href="mailto:security@mihnk.org">Security</a>
+            </li>
+          </ul>
+          <p>
+            A{' '}
+            <a href="https://mihnk.org" rel="noopener noreferrer">
+              mihnk
+            </a>{' '}
+            project.
+          </p>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

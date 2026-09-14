@@ -1,0 +1,65 @@
+name: website
+
+# The site renders the canonical Markdown at build time, so a documentation
+# change is a website change. Go-only pull requests skip this job.
+on:
+  pull_request:
+    paths:
+      - 'website/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'config/crd/**'
+      - '.github/workflows/website.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'config/crd/**'
+      - '.github/workflows/website.yml'
+
+permissions: {}
+
+concurrency:
+  group: website-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: website/.nvmrc
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # The homepage example has to stay a valid ZoneRoute as the CRD moves.
+      - name: Validate the homepage example
+        run: npm run check:example
+
+      - name: Build
+        run: npm run build
+
+      # Runs against dist/, so it checks exactly what is served.
+      - name: Check internal links
+        run: npm run check:links

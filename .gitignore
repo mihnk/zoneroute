@@ -6,3 +6,7 @@ bin/
 /hack/.e2e/
 /hack/.release/
 /dist/
+# website
+/website/node_modules/
+/website/dist/
+/website/.astro/
