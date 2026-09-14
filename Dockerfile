@@ -4,7 +4,7 @@
 #
 # The build stage runs on the builder's own platform and cross-compiles for
 # the target, so a multi-platform build does not emulate the Go toolchain.
-FROM --platform=$BUILDPLATFORM golang:1.26.8-bookworm@sha256:9fdc884aacc3bec89b20ffc69f4bb369c78210e3e4f600387b5128b12c199f81 AS build
+FROM --platform=$BUILDPLATFORM golang:1.27.1-bookworm@sha256:648f440f42a0958804efb24df176f806f9d353b41f1c0627f666428e40310f6b AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
