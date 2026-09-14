@@ -55,9 +55,11 @@ if [ "${ZONEROUTE_TEST_TUNING:-}" = "1" ]; then
   echo "==> test tuning"
   corefile=$(k get configmap coredns -o jsonpath='{.data.Corefile}')
   if grep -qE '^[[:space:]]*reload[[:space:]]*$' <<<"$corefile"; then
+    # Command substitution drops the trailing newline; put it back, or the
+    # next thing appended to the Corefile lands on the last line.
     tuned=$(sed -E 's/^([[:space:]]*)reload[[:space:]]*$/\1reload 2s 1s/' <<<"$corefile")
     k patch configmap coredns --type merge \
-      -p "$(jq -n --arg c "$tuned" '{data: {Corefile: $c}}')" >/dev/null
+      -p "$(jq -n --arg c "$tuned"$'\n' '{data: {Corefile: $c}}')" >/dev/null
     echo "  reload interval shortened"
   fi
   k scale deployment/coredns --replicas=1 >/dev/null

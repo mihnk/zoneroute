@@ -317,7 +317,14 @@ func editCorefile(t *testing.T, mutate func(string) string) (previous string) {
 	t.Helper()
 	previous = corefile(t)
 	t.Cleanup(func() { setCorefile(t, previous) })
-	setCorefile(t, mutate(previous))
+	// A Corefile that does not end in a newline would make an appended block
+	// land on the last line, which CoreDNS then refuses to parse. Whoever
+	// wrote it last is not this test's problem.
+	text := previous
+	if !strings.HasSuffix(text, "\n") {
+		text += "\n"
+	}
+	setCorefile(t, mutate(text))
 	return previous
 }
 
